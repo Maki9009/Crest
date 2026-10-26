@@ -4605,6 +4605,14 @@
     "downloads-popover-remove-accessible": {
       "category": "internal",
       "message": "The downloads popover's Remove from List control stays available to VoiceOver and other assistive technologies when the pointer is not over its row."
+    },
+    "locked-space-hides-downloads-button": {
+      "category": "internal",
+      "message": "A locked Space shows no Downloads button in the sidebar's corner, as it shows none of its downloads."
+    },
+    "ipad-lists-back-to-tabs": {
+      "category": "improved",
+      "message": "On iPad, while Archive, History or Downloads fills the sidebar, its corner button takes you back to your tabs."
     }
   }
 }

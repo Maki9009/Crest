@@ -163,21 +163,23 @@ struct BrowserSidebarLoadedContent: View {
         let space = context.browser.shownSpace
         let spaceID = space?.id
         let utilityPresentation = context.utilityPresentation
-        // A locked Space shows none of its downloads.
+        // A locked Space shows none of its downloads, nor the button for them.
         let assignment = space.flatMap {
             context.spaceAccess.isLocked($0) ? nil : BrowserSpaceRuntimeAssignment(space: $0)
         }
         return BrowserSpaceSwitcherAccessories(
-            downloads: BrowserSpaceSwitcherDownloadsControl(
-                downloadCenter: context.pageAccess.downloadCenter,
-                assignment: assignment,
-                tint: space?.settings.look.colors.first?.color ?? .accentColor,
-                isPresented: utilityPresentation.isDownloadsPresented,
-                setPresented: utilityPresentation.setDownloadsPresented,
-                actions: context.utilityActions,
-                showAll: { utilityPresentation.present(.downloads) },
-                recordFrame: utilityPresentation.recordDownloadsFrame
-            ),
+            downloads: assignment.map { assignment in
+                BrowserSpaceSwitcherDownloadsControl(
+                    downloadCenter: context.pageAccess.downloadCenter,
+                    assignment: assignment,
+                    tint: space?.settings.look.colors.first?.color ?? .accentColor,
+                    isPresented: utilityPresentation.isDownloadsPresented,
+                    setPresented: utilityPresentation.setDownloadsPresented,
+                    actions: context.utilityActions,
+                    showAll: { utilityPresentation.present(.downloads) },
+                    recordFrame: utilityPresentation.recordDownloadsFrame
+                )
+            },
             commonLists: BrowserSpaceSwitcherCommonLists(
                 isExpanded: context.utilityPresentation.isSwitcherExpanded,
                 surface: context.utilityPresentation.triggerSurface(for: spaceID),

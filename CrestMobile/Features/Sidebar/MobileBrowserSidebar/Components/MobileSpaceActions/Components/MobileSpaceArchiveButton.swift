@@ -15,11 +15,8 @@ struct MobileSpaceArchiveButton: View {
 
     var body: some View {
         Button(action: presentsInline ? toggleCommonLists : showArchive) {
-            MobileSpaceUtilityButtonLabel(systemImage: "archivebox")
+            MobileSpaceUtilityButtonLabel(systemImage: isBackToTabs ? "xmark" : "archivebox")
         }
-        .symbolVariant(
-            presentsInline && commonListsAreExpanded ? .fill : .none
-        )
         .foregroundStyle(.primary)
         .symbolEffect(
             .bounce,
@@ -35,7 +32,9 @@ struct MobileSpaceArchiveButton: View {
             )
         )
         .accessibilityLabel(
-            presentsInline ? "Archive, History, and Downloads" : "Archive"
+            isBackToTabs
+                ? "Back to Tabs"
+                : presentsInline ? "Archive, History, and Downloads" : "Archive"
         )
         .accessibilityValue(accessibilityValue)
         .accessibilityIdentifier(
@@ -53,6 +52,12 @@ struct MobileSpaceArchiveButton: View {
     /// and downloads get a control of their own beside it.
     private var presentsInline: Bool {
         utilityPresentationStyle == .inline
+    }
+
+    /// While the lists fill the sidebar inline, this control is the way back
+    /// to the tabs.
+    private var isBackToTabs: Bool {
+        presentsInline && commonListsAreExpanded
     }
 
     private var accessibilityValue: String {

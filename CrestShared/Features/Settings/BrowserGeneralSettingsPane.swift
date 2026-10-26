@@ -91,6 +91,7 @@ struct BrowserGeneralSettingsPane: View {
                 } footer: {
                     CrestFormFootnote("Spelling changes apply after Crest restarts.")
                 }
+                BrowserPageCaptureSettingsSection()
                 BrowserDeveloperToolbarSettingsSection()
             #endif
         }

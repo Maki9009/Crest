@@ -112,6 +112,9 @@ final class BrowserPage: NSObject, BrowserMediaSessionCommandEndpoint {
     var isContentBlockingActive: Bool { engineAdapter.isContentBlockingActive }
     var developerPanel: BrowserDeveloperPanel?
     private(set) var isRegionCapturePresented = false
+    /// The part of the page just captured, open to mark up before it is
+    /// copied, saved or shared.
+    private(set) var capturePreview: BrowserCaptureMarkup?
     /// Where the agent using the page's tab last acted, which the page shows
     /// as the agent's pointer while the agent uses the tab.
     private(set) var agentPointer: BrowserAgentPointer?
@@ -558,6 +561,7 @@ final class BrowserPage: NSObject, BrowserMediaSessionCommandEndpoint {
         engineInfoBars = []
         shareSourceOffer = nil
         isRegionCapturePresented = false
+        capturePreview = nil
         isSharedAsTab = false
         isSharingTab = false
         sharedTabPageIDs = []
@@ -616,6 +620,7 @@ final class BrowserPage: NSObject, BrowserMediaSessionCommandEndpoint {
 
     func beginRegionCapture() {
         guard live.url != nil else { return }
+        capturePreview = nil
         isRegionCapturePresented = true
     }
 
@@ -636,17 +641,63 @@ final class BrowserPage: NSObject, BrowserMediaSessionCommandEndpoint {
                 let png = await withCheckedContinuation { continuation in
                     enginePage.capture(area: rect) { continuation.resume(returning: $0) }
                 }
-                guard let image = png.flatMap(NSImage.init(data:)) else {
+                guard let image = png.flatMap(NSImage.init(data:)), rect.width > 0, image.size.width > 0 else {
                     throw BrowserDeveloperCaptureError.pageUnavailable
                 }
-                guard Self.copyImageToPasteboard(image) else {
-                    throw BrowserDeveloperCaptureError.encodingFailed
+                guard BrowserCaptureDestination.current.opensPreview else {
+                    guard Self.copyImageToPasteboard(image) else {
+                        throw BrowserDeveloperCaptureError.encodingFailed
+                    }
+                    presentDeveloperCaptureFeedback("Capture Copied")
+                    return
                 }
-                presentDeveloperCaptureFeedback("Capture Copied")
+                capturePreview = BrowserCaptureMarkup(image: image, pointScale: image.size.width / rect.width)
             } catch {
                 presentDeveloperCaptureFeedback("Couldn’t Capture Page")
             }
         }
+    }
+
+    func copyCapturePreview() {
+        guard let capturePreview else { return }
+        guard Self.copyImageToPasteboard(capturePreview.rendered()) else {
+            presentDeveloperCaptureFeedback("Couldn’t Copy Capture")
+            return
+        }
+        closeCapturePreview()
+        presentDeveloperCaptureFeedback("Capture Copied")
+    }
+
+    func saveCapturePreview() {
+        guard let capturePreview, let window = nativeView.window else { return }
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                guard let data = capturePreview.pngData() else {
+                    throw BrowserDeveloperCaptureError.encodingFailed
+                }
+                let panel = NSSavePanel()
+                panel.allowedContentTypes = [.png]
+                panel.canCreateDirectories = true
+                panel.nameFieldStringValue = live.suggestedFilename(pathExtension: "png")
+                panel.title = "Save Capture"
+                panel.prompt = "Save"
+                guard await panel.beginSheetModal(for: window) == .OK,
+                    let destinationURL = panel.url
+                else { return }
+                try await Task.detached(priority: .userInitiated) {
+                    try data.write(to: destinationURL, options: .atomic)
+                }.value
+                if self.capturePreview === capturePreview { closeCapturePreview() }
+                presentDeveloperCaptureFeedback("Capture Saved")
+            } catch {
+                presentDeveloperCaptureFeedback("Couldn’t Save Capture")
+            }
+        }
+    }
+
+    func closeCapturePreview() {
+        capturePreview = nil
     }
 
     func copyFullPageCapture() {

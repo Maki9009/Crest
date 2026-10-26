@@ -65,6 +65,8 @@ enum CrestMotion {
     static let dismissalTransition: TimeInterval = 0.18
     /// Hover feedback for sidebar rows.
     static let hoverTransition: TimeInterval = 0.14
+    /// Moving a capture frame onto the page element under the pointer.
+    static let captureTargetTransition: TimeInterval = 0.14
     /// Expanding or collapsing a sidebar disclosure group.
     static let disclosureTransition: TimeInterval = 0.20
     /// Updating an address field's determinate loading fill.
@@ -143,6 +145,7 @@ enum CrestMotion {
     static var toolbar: Animation { .snappy(duration: toolbarTransition) }
     static var dismissal: Animation { .easeOut(duration: dismissalTransition) }
     static var hover: Animation { .easeInOut(duration: hoverTransition) }
+    static var captureTarget: Animation { .snappy(duration: captureTargetTransition) }
     static var disclosure: Animation { .snappy(duration: disclosureTransition) }
     static var loadingProgress: Animation {
         .smooth(duration: loadingProgressTransition)

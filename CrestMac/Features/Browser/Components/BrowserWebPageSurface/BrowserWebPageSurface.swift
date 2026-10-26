@@ -100,7 +100,13 @@ struct BrowserWebPageSurface: View {
             )
 
             if page.isRegionCapturePresented {
-                BrowserRegionCaptureOverlay(page: page)
+                BrowserRegionCaptureOverlay(page: page, spaceAccent: spaceAccent)
+                    .zIndex(BrowserWebPageSurfaceMetrics.regionCaptureZIndex)
+            }
+
+            if let capturePreview = page.capturePreview {
+                BrowserCapturePreview(page: page, markup: capturePreview, spaceAccent: spaceAccent)
+                    .id(capturePreview.id)
                     .zIndex(BrowserWebPageSurfaceMetrics.regionCaptureZIndex)
             }
 
@@ -120,6 +126,13 @@ struct BrowserWebPageSurface: View {
                     .zIndex(BrowserWebPageSurfaceMetrics.feedbackZIndex)
             }
         }
+    }
+
+    /// The color of the page's Space, which capture outlines take.
+    private var spaceAccent: Color? {
+        browser.spaceModel(
+            matching: BrowserSpaceRuntimeAssignment(spaceID: page.spaceID, profileID: page.profileID)
+        ).map(\.settings.look.primaryColor.color)
     }
 
     /// The questions the find bar asks, bound to this surface's page.

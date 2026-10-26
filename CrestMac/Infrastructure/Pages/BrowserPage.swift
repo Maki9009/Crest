@@ -95,7 +95,7 @@ final class BrowserPage: NSObject, BrowserMediaSessionCommandEndpoint {
     var visibleEngineInfoBars: [BrowserEngineInfoBar] {
         engineInfoBars.filter { !minimizedInfoBarIDs.contains($0.id) }
     }
-    var pendingServerTrustIdentity: BrowserServerTrustIdentity?
+    var pendingServerTrust: BrowserServerTrustChallenge?
     /// Why the page's engine couldn't create it, which the page shows in
     /// place of its content.
     var webContentFailureMessage: String?

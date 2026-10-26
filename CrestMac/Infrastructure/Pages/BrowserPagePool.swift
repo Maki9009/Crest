@@ -13,6 +13,13 @@ final class BrowserPagePool:
     /// How long a window a page asked for waits for its Quick Window to take
     /// its page before the page goes.
     private static let popupWindowWait: Duration = .seconds(30)
+    /// How long a page started for a hovered row waits to be opened before
+    /// it is let go.
+    private static let preparedPageLifetime: Duration = .seconds(20)
+    /// How long after one hovered row starts a page another may, so resting
+    /// on row after row never makes and drops a page for each, and the
+    /// sidebar is never redrawn for each.
+    private static let preparedPageCooldown: Duration = .seconds(1)
     @ObservationIgnored private static let lifecycleSignposter = OSSignposter(
         subsystem: "com.pauldavis.crest",
         category: "WebKitLifecycle"
@@ -58,7 +65,14 @@ final class BrowserPagePool:
     /// Deliberately observable: a card mount reads it through
     /// `presentedPage(for:)` and has to re-render when membership changes.
     private(set) var presentedTabIDs: [UUID] = [] {
-        didSet { runtimeStore.updatePresentation(of: self) }
+        didSet {
+            runtimeStore.updatePresentation(of: self)
+            // A prepared tab someone opened is theirs to keep.
+            if let preparedTabID, presentedTabIDs.contains(preparedTabID) {
+                self.preparedTabID = nil
+                preparedPageExpiry?.cancel()
+            }
+        }
     }
     private(set) var residencyRevision: Int {
         get { runtimeStore.revision }
@@ -68,6 +82,19 @@ final class BrowserPagePool:
     /// The window this pool hosts pages for. Its pages open through the core
     /// from this window, in its workspace.
     @ObservationIgnored let browser: BrowserStore
+    /// The tab whose page a hovered row started and no one has opened yet.
+    /// Only one is kept across windows, so a pointer passing over many rows
+    /// holds one page.
+    private var preparedTabID: UUID? {
+        get { runtimeStore.preparedTabID }
+        set { runtimeStore.preparedTabID = newValue }
+    }
+    private var preparedPageExpiry: Task<Void, Never>? {
+        get { runtimeStore.preparedPageExpiry }
+        set { runtimeStore.preparedPageExpiry = newValue }
+    }
+    /// When a hovered row last started a page.
+    @ObservationIgnored private var lastPreparation: ContinuousClock.Instant?
     var windowID: UUID { browser.windowID }
     /// Whether this pool's window is still open. A pool outlives its window
     /// while a Quick Window opened over it lasts, and the window reopened
@@ -504,6 +531,42 @@ final class BrowserPagePool:
         tabRuntimes[tabID]?.page
     }
 
+    /// Opens and starts the page of tab `tabID` in the Space the window shows
+    /// before the person selects it, as the pointer rests on its row, so the
+    /// click finds the page already under way. A tab that holds a page, shows
+    /// native content or is refused a page is left as it is.
+    func prepare(_ tabID: UUID) {
+        let now = ContinuousClock.now
+        guard lastPreparation.map({ now - $0 >= Self.preparedPageCooldown }) ?? true,
+            tabRuntimes[tabID] == nil, let space = browser.shownSpace, let tab = space.tabs.model(tabID),
+            tab.nativeContent == nil
+        else { return }
+        lastPreparation = now
+        releasePreparedPage()
+        let pageTab = BrowserPageTab(tab, images: browser.core.state.favicons)
+        guard let page = page(for: pageTab, space: space) else { return }
+        loadInitialURL(for: pageTab, into: page)
+        reconcileCredentialAccess()
+        preparedTabID = tabID
+        preparedPageExpiry = Task { [weak self] in
+            try? await Task.sleep(for: Self.preparedPageLifetime)
+            guard !Task.isCancelled else { return }
+            self?.releasePreparedPage()
+        }
+    }
+
+    /// Lets go of the page a hovered row started, unless its tab has been
+    /// opened since, which makes it an ordinary page.
+    private func releasePreparedPage() {
+        preparedPageExpiry?.cancel()
+        preparedPageExpiry = nil
+        guard let tabID = preparedTabID else { return }
+        preparedTabID = nil
+        guard !presentedTabIDsAcrossWindows.contains(tabID), host.residentTabIDs.contains(tabID) else { return }
+        host.evictPage(tabID)
+        residencyRevision += 1
+    }
+
     /// The live page of `tab` in `space` for an agent the person allowed: the
     /// tab's resident page, or one made and loaded at the tab's address
     /// without this window showing it. Nil when the core refuses the tab a
@@ -511,6 +574,11 @@ final class BrowserPagePool:
     func agentPage(for tab: TabStateModel, in space: SpaceModel) -> BrowserPage? {
         let pageTab = BrowserPageTab(tab, images: browser.core.state.favicons)
         guard let page = page(for: pageTab, space: space) else { return nil }
+        if preparedTabID == pageTab.id {
+            // The agent keeps the page a hovered row started.
+            preparedTabID = nil
+            preparedPageExpiry?.cancel()
+        }
         loadInitialURL(for: pageTab, into: page)
         reconcileCredentialAccess()
         return page

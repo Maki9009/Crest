@@ -64,12 +64,12 @@ extension BrowserPlatformPage {
 
     var canProceedAfterCertificateFailure: Bool {
         live.failure?.error == .secureConnectionFailed
-            && pendingServerTrustIdentity != nil
+            && pendingServerTrust?.identity != nil
     }
 
     func proceedAfterCertificateFailure() {
         guard canProceedAfterCertificateFailure,
-            let identity = pendingServerTrustIdentity
+            let identity = pendingServerTrust?.identity
         else { return }
         serverTrustOverrides.approve(identity, for: profileID)
         retryAfterNavigationFailure()

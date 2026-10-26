@@ -11,6 +11,8 @@ final class BrowserSettingsTabState {
     var forgeStep = BrowserCrestStudioStep.shape
     /// Whether the sidebar's Spaces can be dragged into a new order.
     var isArrangingSpaces = false
+    /// The pane the pointer rests on in the sidebar, built ahead of a click.
+    var hoveredPane: BrowserSettingsSidebarItem?
     /// The Space whose name is waiting to be put into editing.
     var renameSpaceID: UUID?
     let sidebarScroll = BrowserNativeScrollState()

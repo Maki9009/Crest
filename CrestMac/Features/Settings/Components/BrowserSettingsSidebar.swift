@@ -4,6 +4,9 @@ import SwiftUI
 /// grouped the way the macOS catalog orders it, with the Spaces between the
 /// last two groups.
 struct BrowserSettingsSidebar: View {
+    /// How long the pointer rests on a row before its pane is built.
+    private static let restDelay: Duration = .milliseconds(250)
+
     @Environment(\.locale) private var locale
     @State private var standaloneScroll = BrowserNativeScrollState()
     @State private var pendingDeletionID: UUID?
@@ -20,6 +23,25 @@ struct BrowserSettingsSidebar: View {
     private var state: CoreState { browser.core.state }
 
     var body: some View {
+        content
+            .task(id: hoveredItem) {
+                // Only a pane opens in place; a Space's row may open it in its
+                // own window instead. Building a pane holds the main thread
+                // for a moment, so it waits for a pointer that has stopped on
+                // the row rather than one passing over it.
+                guard case .destination = hoveredItem else {
+                    // Clearing it lets a return to the same row build its
+                    // pane again if it was let go in the meantime.
+                    tabState.hoveredPane = nil
+                    return
+                }
+                try? await Task.sleep(for: Self.restDelay)
+                guard !Task.isCancelled else { return }
+                tabState.hoveredPane = hoveredItem
+            }
+    }
+
+    private var content: some View {
         VStack(spacing: 0) {
             BrowserSettingsBuildHeader()
             searchField

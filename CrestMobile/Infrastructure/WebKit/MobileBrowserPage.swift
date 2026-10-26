@@ -54,7 +54,7 @@ final class MobileBrowserPage: NSObject, BrowserMediaSessionCommandEndpoint {
     var committedNavigationCount = 0
     private(set) var completedNavigationCount = 0
     var blockedPopupState = BrowserBlockedPopupPageState()
-    var pendingServerTrustIdentity: BrowserServerTrustIdentity?
+    var pendingServerTrust: BrowserServerTrustChallenge?
     /// The document's address as WebKit last published it.
     @ObservationIgnored private var documentURL: URL?
     var navigationHistory: BrowserPageNavigationHistory {

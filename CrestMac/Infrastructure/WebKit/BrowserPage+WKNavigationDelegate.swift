@@ -26,7 +26,7 @@ extension BrowserPage: WKNavigationDelegate {
         // WebKit accepted the navigation Crest asked for, so the authorization
         // that came with it is spent.
         consumeAppInitiatedURL()
-        pendingServerTrustIdentity = nil
+        pendingServerTrust = nil
         credentialState.didStartNavigation()
         readerModeSession?.invalidate()
         faviconSession?.invalidate()

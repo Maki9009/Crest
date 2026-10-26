@@ -55,7 +55,11 @@ struct CrestInteractiveSurfaceModifier: ViewModifier {
                     ? CrestInteractiveSurfaceMetrics.selectedShadowYOffset
                     : 0
             )
-            .animation(accessibleSurfaceAnimation, value: isHovering)
+            // Hover shows the moment the pointer arrives and fades only as it
+            // leaves, so moving down a list feels immediate.
+            .animation(
+                isHovering ? nil : CrestMotion.hoverRelease.unlessReducingMotion(reduceMotion), value: isHovering
+            )
             .animation(accessibleSurfaceAnimation, value: selectionEmphasis)
             // Selection shows at once, as browsers switch tabs; only a press
             // eases in. Fading a selected surface in and out redraws its

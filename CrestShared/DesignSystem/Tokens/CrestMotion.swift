@@ -65,6 +65,9 @@ enum CrestMotion {
     static let dismissalTransition: TimeInterval = 0.18
     /// Hover feedback for sidebar rows.
     static let hoverTransition: TimeInterval = 0.14
+    /// A hover tint fading as the pointer leaves. Hover itself shows at once,
+    /// as the pointer arrives.
+    static let hoverReleaseTransition: TimeInterval = 0.10
     /// Expanding or collapsing a sidebar disclosure group.
     static let disclosureTransition: TimeInterval = 0.20
     /// Updating an address field's determinate loading fill.
@@ -143,6 +146,7 @@ enum CrestMotion {
     static var toolbar: Animation { .snappy(duration: toolbarTransition) }
     static var dismissal: Animation { .easeOut(duration: dismissalTransition) }
     static var hover: Animation { .easeInOut(duration: hoverTransition) }
+    static var hoverRelease: Animation { .easeOut(duration: hoverReleaseTransition) }
     static var disclosure: Animation { .snappy(duration: disclosureTransition) }
     static var loadingProgress: Animation {
         .smooth(duration: loadingProgressTransition)

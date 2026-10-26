@@ -49,7 +49,9 @@ final class BrowserLinkHoverController {
             ]
         ) { [weak self] event in
             MainActor.assumeIsolated {
-                guard let self else { return }
+                // Hit testing the window for every move costs more than the
+                // move, so it runs only while there is a preview to put away.
+                guard let self, !self.isIdle else { return }
                 if event.type != .mouseMoved || !self.canPresent {
                     self.invalidate()
                 }
@@ -214,6 +216,11 @@ final class BrowserLinkHoverController {
             in: frame, contentWorld: BrowserLinkHoverContentBridge.world
         )
         return result as? Bool == true
+    }
+
+    /// Whether no preview shows or waits to, so no event has one to end.
+    private var isIdle: Bool {
+        state.isIdle && work == nil && retireSource == nil
     }
 
     private var canPresent: Bool {

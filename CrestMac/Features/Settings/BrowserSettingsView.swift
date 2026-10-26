@@ -2,6 +2,10 @@ import AppKit
 import SwiftUI
 
 struct BrowserSettingsView: View {
+    /// How many panes stay built once shown or hovered, so going back to
+    /// one, or opening one the pointer rests on, shows it at once.
+    private static let builtPaneLimit = 4
+
     @Environment(\.scenePhase) private var scenePhase
     let browser: BrowserStore
     let pages: BrowserPagePool
@@ -14,6 +18,8 @@ struct BrowserSettingsView: View {
 
     @Bindable var tabState: BrowserSettingsTabState
     let tabAssignment: BrowserTabRuntimeAssignment?
+    /// The panes kept built, most recently wanted last.
+    @State private var builtPanes: [BrowserSettingsSidebarItem] = []
 
     init(
         browser: BrowserStore,
@@ -50,10 +56,22 @@ struct BrowserSettingsView: View {
             Divider()
 
             // The page stays built while its Space is off screen, as a webpage
-            // does, so switching to this Space doesn't rebuild the form.
-            page
-                .id(tabState.navigation.selection)
-                .frame(minWidth: 320, maxWidth: .infinity, maxHeight: .infinity)
+            // does, so switching to this Space doesn't rebuild the form. The
+            // last few panes stay built behind it.
+            ZStack {
+                ForEach(shownPanes, id: \.self) { item in
+                    let isShown = item == tabState.navigation.selection
+                    page(item)
+                        .opacity(isShown ? 1 : 0)
+                        .allowsHitTesting(isShown)
+                        .disabled(!isShown)
+                        // A pane kept built behind the shown one reads as one
+                        // hidden element, so VoiceOver never reaches its rows.
+                        .accessibilityElement(children: isShown ? .contain : .ignore)
+                        .accessibilityHidden(!isShown)
+                }
+            }
+            .frame(minWidth: 320, maxWidth: .infinity, maxHeight: .infinity)
         }
         .ignoresSafeArea(.container, edges: .top)
         .background(BrowserSettingsCanvas.background)
@@ -62,6 +80,10 @@ struct BrowserSettingsView: View {
         .environment(\.browserSettingsIsTab, true)
         .environment(\.browserSettingsUsesLiveSidebar, usesLiveSidebar)
         .environment(\.browserSettingsOpenSpace, openSpaceAction)
+        .onChange(of: tabState.navigation.selection, initial: true) { _, item in keepBuilt(item) }
+        .onChange(of: tabState.hoveredPane) { _, item in
+            if let item { keepBuilt(item) }
+        }
         .onChange(of: scenePhase) { previousPhase, phase in
             lockPrivateSettings(previousPhase, phase)
         }
@@ -88,9 +110,26 @@ struct BrowserSettingsView: View {
         }
     }
 
+    /// The built panes and the selected one, which shows even before it is
+    /// recorded as built.
+    private var shownPanes: [BrowserSettingsSidebarItem] {
+        let selection = tabState.navigation.selection
+        return builtPanes.contains(selection) ? builtPanes : builtPanes + [selection]
+    }
+
+    /// Keeps `item` built, letting go of the pane wanted longest ago.
+    private func keepBuilt(_ item: BrowserSettingsSidebarItem) {
+        builtPanes.removeAll { $0 == item }
+        builtPanes.append(item)
+        if builtPanes.count > Self.builtPaneLimit {
+            let selection = tabState.navigation.selection
+            if let index = builtPanes.firstIndex(where: { $0 != selection }) { builtPanes.remove(at: index) }
+        }
+    }
+
     @ViewBuilder
-    private var page: some View {
-        switch tabState.navigation.selection {
+    private func page(_ item: BrowserSettingsSidebarItem) -> some View {
+        switch item {
         case .destination(let destination):
             BrowserSettingsDestinationPage(
                 destination: destination,

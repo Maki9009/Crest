@@ -11,14 +11,15 @@ extension BrowserPlatformPage {
         _ challenge: URLAuthenticationChallenge,
         completionHandler: @escaping @MainActor @Sendable (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
     ) {
-        if let identity = BrowserServerTrustIdentity.challengeIdentity(for: challenge) {
-            if serverTrustOverrides.isApproved(identity, for: profileID),
-                let trust = challenge.protectionSpace.serverTrust
+        if let serverTrust = BrowserServerTrustChallenge(challenge) {
+            if serverTrustOverrides.hasApprovals(for: profileID),
+                let identity = serverTrust.identity,
+                serverTrustOverrides.isApproved(identity, for: profileID)
             {
-                pendingServerTrustIdentity = nil
-                completionHandler(.useCredential, URLCredential(trust: trust))
+                pendingServerTrust = nil
+                completionHandler(.useCredential, URLCredential(trust: serverTrust.trust))
             } else {
-                pendingServerTrustIdentity = identity
+                pendingServerTrust = serverTrust
                 completionHandler(.performDefaultHandling, nil)
             }
             return

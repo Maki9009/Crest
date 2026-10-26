@@ -8,6 +8,12 @@ import SwiftUI
 /// `BrowserInteractionCapabilities` rather than from which target compiled
 /// the file, so the two shells share this row instead of a resemblance.
 struct BrowserSidebarTabRow: View {
+    /// How long the pointer stays still on a row before its page starts.
+    /// Starting a page launches its engine process on the main thread, which
+    /// stalls hover feedback for a moment, so it waits for a pointer that has
+    /// stopped rather than one passing over the row.
+    private static let restDelay: Duration = .milliseconds(250)
+
     @Environment(BrowserSidebarInteractionState.self) private var sidebarInteraction
 
     let tab: TabStateModel
@@ -21,6 +27,9 @@ struct BrowserSidebarTabRow: View {
     @State private var renameRequest: BrowserTabRuntimeAssignment?
     @State private var iconRequest: BrowserTabRuntimeAssignment?
     @State private var draftTitle = ""
+    /// The wait for the pointer to rest, kept outside observation so a move
+    /// never redraws the row.
+    @State private var rest = BrowserSidebarTabRowRest()
     @FocusState private var isTitleFocused: Bool
 
     var body: some View {
@@ -42,6 +51,7 @@ struct BrowserSidebarTabRow: View {
                     tabID: tab.id, context: context, canAct: { configuration.isCurrentAndUnlocked }))
         )
         .environment(\.browserInteractionCapabilities, context.capabilities)
+        .onContinuousHover { pointerMoved($0) }
         .onChange(of: runtimeAssignment) { _, assignment in
             guard renameRequest != assignment else { return }
             cancelTitleEditing()
@@ -98,6 +108,21 @@ struct BrowserSidebarTabRow: View {
         // was just moved.
         guard !sidebarInteraction.sidebarReorderState.suppressesActivation else { return }
         context.select(tab.id)
+    }
+
+    /// Starts this tab's page once the pointer rests on its row, so selecting
+    /// it shows a page already loading rather than one only then created.
+    /// Every move starts the wait over.
+    private func pointerMoved(_ phase: HoverPhase) {
+        rest.task?.cancel()
+        guard case .active = phase, let prepare = context.prepare else { return }
+        rest.task = Task {
+            try? await Task.sleep(for: Self.restDelay)
+            guard !Task.isCancelled, isHovering else { return }
+            let configuration = self.configuration
+            guard !configuration.isLoaded, configuration.isCurrentAndUnlocked else { return }
+            prepare(tab.id)
+        }
     }
 
     private func beginRenaming() {
@@ -194,4 +219,10 @@ extension BrowserSidebarTabRow: @MainActor Equatable {
     static func == (lhs: BrowserSidebarTabRow, rhs: BrowserSidebarTabRow) -> Bool {
         lhs.tab === rhs.tab && lhs.context == rhs.context && lhs.isSplitGroupMember == rhs.isSplitGroupMember
     }
+}
+
+/// A row's wait for the pointer to rest on it.
+@MainActor
+private final class BrowserSidebarTabRowRest {
+    var task: Task<Void, Never>?
 }

@@ -63,6 +63,8 @@ final class WebKitEngineBinding: EngineBinding {
     /// How long a staged link waits for its Peek, and how many may wait.
     private static let stagedLinkLifetime: TimeInterval = 300
     private static let stagedLinkLimit = 16
+    /// How long the blank page that starts WebKit's processes is kept.
+    private static let warmUpLifetime: Duration = .seconds(10)
 
     // MARK: - Variables
 
@@ -97,6 +99,9 @@ final class WebKitEngineBinding: EngineBinding {
     /// The links this binding's pages staged, by the identity the core
     /// stages them under, until a page loads one or the core drops it.
     var stagedLinks: [UUID: StagedLink] = [:]
+    /// A blank page in a store of its own, kept briefly after the binding
+    /// attaches so WebKit's processes are running before the first page.
+    private var warmUpView: WKWebView?
     /// The popups this binding's pages offered the core, by offer, while the
     /// core decides on them.
     var offers: [UUID: Offer] = [:]
@@ -128,6 +133,21 @@ final class WebKitEngineBinding: EngineBinding {
             contentRules.provider = BrowserContentRuleListProvider.forLaunch(core: engines.core)
         }
         engines.core.followPrompts(self)
+        warmUp()
+    }
+
+    /// Starts WebKit's network and web content processes with a blank page,
+    /// so the first page someone opens loads without waiting for them.
+    private func warmUp() {
+        let configuration = WKWebViewConfiguration()
+        configuration.websiteDataStore = .nonPersistent()
+        let view = WKWebView(frame: .zero, configuration: configuration)
+        view.loadHTMLString("", baseURL: nil)
+        warmUpView = view
+        Task { [weak self] in
+            try? await Task.sleep(for: Self.warmUpLifetime)
+            self?.warmUpView = nil
+        }
     }
 
     func run(_ command: EngineCommand) {

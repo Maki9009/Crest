@@ -3,18 +3,6 @@ import Foundation
 import Security
 
 extension BrowserServerTrustIdentity {
-    static func challengeIdentity(
-        for challenge: URLAuthenticationChallenge
-    ) -> BrowserServerTrustIdentity? {
-        let protectionSpace = challenge.protectionSpace
-        guard
-            protectionSpace.authenticationMethod
-                == NSURLAuthenticationMethodServerTrust,
-            let trust = protectionSpace.serverTrust
-        else { return nil }
-        return identity(for: trust, host: protectionSpace.host, port: protectionSpace.port)
-    }
-
     /// The identity of `trust`'s leaf certificate served for `host` and `port`;
     /// a port of zero or less means HTTPS's default.
     static func identity(for trust: SecTrust, host: String, port: Int) -> BrowserServerTrustIdentity? {

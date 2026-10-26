@@ -106,7 +106,7 @@ struct SpaceSidebarBrowsingContent: View {
             space: space, window: window, favicons: browser.core.state.favicons, browser: browser,
             spaceAccess: spaceAccess, pageAccess: pageAccess, tabActions: tabActions, capabilities: capabilities,
             promotionNamespaces: [.current: tabPromotionNamespace], select: activate,
-            restoreSavedLocation: restoreSavedLocation)
+            restoreSavedLocation: restoreSavedLocation, prepare: pages.prepare)
     }
 
     private var pageAccess: BrowserSidebarPageAccess {

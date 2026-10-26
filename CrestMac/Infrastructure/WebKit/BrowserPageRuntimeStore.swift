@@ -18,6 +18,11 @@ final class BrowserPageRuntimeStore {
     @ObservationIgnored private var presentations: [UUID: [UUID]] = [:]
     @ObservationIgnored private var focusOrder: [UUID: Int] = [:]
     @ObservationIgnored private var focusSequence = 0
+    /// The tab whose page a hovered row in any window started and no one has
+    /// opened yet, kept here so whichever window's pool hands the page out
+    /// clears it, and when the preparation lapses.
+    @ObservationIgnored var preparedTabID: UUID?
+    @ObservationIgnored var preparedPageExpiry: Task<Void, Never>?
     var publishesPageMetadataCentrally = false
 
     var runtimes: [UUID: BrowserTabRuntime] {

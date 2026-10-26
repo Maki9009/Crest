@@ -20,6 +20,13 @@ final class BrowserServerTrustOverrideStore {
         approvals.contains(Approval(profileID: profileID, identity: identity))
     }
 
+    /// Whether the person trusted any certificate for `profileID`, which
+    /// spares reading the certificate of every connection when none could
+    /// match.
+    func hasApprovals(for profileID: UUID) -> Bool {
+        approvals.contains { $0.profileID == profileID }
+    }
+
     func removeApprovals(for profileID: UUID) {
         approvals = Set(approvals.filter { $0.profileID != profileID })
     }

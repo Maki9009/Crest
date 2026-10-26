@@ -14,32 +14,26 @@ struct SidebarChrome: View {
     let commandPaletteHandoff: BrowserCommandPaletteHandoff
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @AppStorage(BrowserAddressBarPlacement.key, store: BrowserChromeAppearancePreference.defaults)
+    private var addressBarPlacementName = BrowserAddressBarPlacement.standard.name
 
     var body: some View {
         if let space = selectedSpace {
             let isLocked = context.spaceAccess.isLocked(space)
 
             VStack(spacing: 0) {
-                BrowserSidebarNavigationControls(
-                    port: BrowserSidebarNavigationPort(
-                        pages: pages, browser: context.browser, showHistory: context.chromeActions.presentHistory),
-                    capabilities: context.capabilities
-                )
-                .contentTransition(.opacity)
-                .background {
-                    // Only the empty navigation-strip background acts as the
-                    // title bar. Controls and tab gestures keep their input.
-                    BrowserWindowTitleBarSurface()
+                if showsTopBar {
+                    // The top bar holds the controls; the strip stays as the
+                    // title bar beside the window's buttons, on the bar's row,
+                    // so the tabs start level with the page.
+                    Color.clear
+                        .frame(height: BrowserAddressBarPlacement.topBarBandHeight)
+                        .background { BrowserWindowTitleBarSurface() }
+                } else {
+                    navigationControls
                 }
-                // Another tab's history shows at once, as every browser switches
-                // tabs; a fade on each switch redraws the strip every frame.
-                .animation(nil, value: pages.activeTabID)
-                .animation(
-                    SpacePagerSettlement.standardAnimation.unlessReducingMotion(reduceMotion),
-                    value: [pages.canGoBack, pages.canGoForward, pages.activePage?.live.isLoading == true]
-                )
 
-                if context.utilityPresentation.surface == nil {
+                if context.utilityPresentation.surface == nil, !showsTopBar {
                     SpaceSidebarAddressBand(
                         space: space,
                         offersSiteControls: !context.browser.isDeleting(space.id),
@@ -69,6 +63,31 @@ struct SidebarChrome: View {
             .allowsHitTesting(!isLocked)
             .accessibilityHidden(isLocked)
         }
+    }
+
+    private var navigationControls: some View {
+        BrowserSidebarNavigationControls(
+            port: BrowserSidebarNavigationPort(
+                pages: pages, browser: context.browser, showHistory: context.chromeActions.presentHistory),
+            capabilities: context.capabilities
+        )
+        .contentTransition(.opacity)
+        .background {
+            // Only the empty navigation-strip background acts as the
+            // title bar. Controls and tab gestures keep their input.
+            BrowserWindowTitleBarSurface()
+        }
+        // Another tab's history shows at once, as every browser switches
+        // tabs; a fade on each switch redraws the strip every frame.
+        .animation(nil, value: pages.activeTabID)
+        .animation(
+            SpacePagerSettlement.standardAnimation.unlessReducingMotion(reduceMotion),
+            value: [pages.canGoBack, pages.canGoForward, pages.activePage?.live.isLoading == true]
+        )
+    }
+
+    private var showsTopBar: Bool {
+        (BrowserAddressBarPlacement.named(addressBarPlacementName) ?? .standard).showsTopBar
     }
 
     /// The Space the window shows, unless it is being deleted.

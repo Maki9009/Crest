@@ -15,6 +15,7 @@ struct BrowserSidebarPresentation: Hashable, Sendable {
     // MARK: - Static Variables
 
     static let floatingCardInset: CGFloat = 7
+    /// The floating card's corner where Crest has no window corner to follow.
     static let floatingCardCornerRadius: CGFloat = 18
 
     static let docked = BrowserSidebarPresentation(
@@ -81,6 +82,14 @@ struct BrowserSidebarPresentation: Hashable, Sendable {
     }
 
     // MARK: - Actions - Layout
+
+    /// The floating card's corner in a window whose corners have
+    /// `windowCornerRadius`. It is concentric with the window's corner, as the
+    /// framed page's is, so the gap around the card keeps its width there.
+    static func floatingCardCornerRadius(windowCornerRadius: CGFloat?) -> CGFloat {
+        guard let windowCornerRadius else { return floatingCardCornerRadius }
+        return max(0, windowCornerRadius - floatingCardInset)
+    }
 
     static func floatingHoverRegionWidth(sidebarWidth: CGFloat) -> CGFloat {
         sidebarWidth + (floatingCardInset * 2)

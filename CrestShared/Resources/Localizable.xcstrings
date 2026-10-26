@@ -1854,6 +1854,12 @@
         }
       }
     },
+    "Address bar" : {
+
+    },
+    "Address Bar" : {
+
+    },
     "Address field" : {
 
     },
@@ -7569,6 +7575,9 @@
     "Installing Update" : {
 
     },
+    "Instant" : {
+
+    },
     "Intensity" : {
 
     },
@@ -7891,6 +7900,9 @@
     "Line" : {
       "extractionState" : "manual"
     },
+    "Link Copied" : {
+
+    },
     "Link destination" : {
 
     },
@@ -8141,6 +8153,9 @@
           }
         }
       }
+    },
+    "Match top bar to page" : {
+
     },
     "Matched in source browser" : {
 
@@ -9337,6 +9352,9 @@
           }
         }
       }
+    },
+    "Opens the command bar" : {
+
     },
     "Opens the command palette" : {
       "localizations" : {
@@ -11289,6 +11307,9 @@
         }
       }
     },
+    "Rounded" : {
+
+    },
     "Rounded Square" : {
       "extractionState" : "manual"
     },
@@ -12139,6 +12160,9 @@
     "Sharing a Tab" : {
       "comment" : "A tab's mark while its page shares another tab."
     },
+    "Sharp" : {
+
+    },
     "Sheen" : {
       "extractionState" : "manual"
     },
@@ -12335,6 +12359,9 @@
     "Show sidebar" : {
 
     },
+    "Show Sidebar" : {
+
+    },
     "Show sidebar on hover in full screen" : {
 
     },
@@ -12413,6 +12440,9 @@
 
     },
     "Sidebar on right" : {
+
+    },
+    "Sidebar speed" : {
 
     },
     "Sidebar widgets" : {
@@ -14295,6 +14325,9 @@
     "Too many agents are using Crest right now." : {
 
     },
+    "Top Bar" : {
+
+    },
     "Top Hit" : {
 
     },
@@ -15411,6 +15444,9 @@
 
     },
     "Window border" : {
+
+    },
+    "Window corners" : {
 
     },
     "Window or Screen…" : {

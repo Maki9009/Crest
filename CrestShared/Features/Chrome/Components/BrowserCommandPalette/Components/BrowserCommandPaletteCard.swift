@@ -86,6 +86,7 @@ struct BrowserCommandPaletteCard: View {
                 )
                 .clipShape(restingShape)
                 .modifier(BrowserSearchProviderGlow(color: model.activeProvider?.color, shape: restingShape))
+                .scaleEffect(isSettled ? 1 : BrowserCommandPaletteMetrics.inPlaceScale)
                 .opacity(isSettled ? 1 : 0)
         }
     }

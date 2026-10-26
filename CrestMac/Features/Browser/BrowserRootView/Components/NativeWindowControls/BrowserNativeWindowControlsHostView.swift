@@ -48,13 +48,53 @@ final class BrowserNativeWindowControlsHostView: NSView {
     /// to shown whenever the window's content changes its bar preferences.
     private var toolbarVisibilityObservation: NSKeyValueObservation?
     private var windowObservers: [NSObjectProtocol] = []
-    private var nativeButtonOrigins: [NSWindow.ButtonType: CGFloat] = [:]
+    /// Where AppKit seats each button: across the window, and up its title
+    /// bar.
+    private var nativeButtonOrigins: [NSWindow.ButtonType: NSPoint] = [:]
     var sidebarOnRight = false
     /// Whether the controls are crossing the window with the sidebar. AppKit
     /// lays its title bar out again on every window update, and putting them
     /// straight at their destination then would cut the move short.
     private var isMovingControls = false
+    /// Whether the buttons are being placed, so the frame changes that
+    /// placing them posts don't place them again partway through.
+    private var isPositioning = false
+    /// How far across the window the buttons sit from their seat while they
+    /// ride in or out with the sidebar: off the window's edge, or nothing.
+    private var slideOffset: CGFloat = 0
+    /// Whether the buttons are riding out with a sidebar sliding away, so they
+    /// stay shown until they are off the window.
+    private var isConcealingControls = false
+    /// Counts the rides, so the end of one a later ride cut short changes
+    /// nothing.
+    private var slideGeneration = 0
     var sidebarWidth: CGFloat = BrowserChromeLayout.sidebarIdealWidth
+    /// How round the window's corners are, through its toolbar's style.
+    var cornerStyle = BrowserWindowCornerStyle.standard {
+        didSet {
+            guard cornerStyle != oldValue else { return }
+            // Each toolbar style seats the window's buttons in their own place.
+            nativeButtonOrigins = [:]
+        }
+    }
+    /// Where the window's buttons line up with a top bar, measured from the
+    /// window's top edge to their centers, or nil to keep the corner style's
+    /// seat.
+    var buttonCenterY: CGFloat? {
+        didSet {
+            guard buttonCenterY != oldValue else { return }
+            applyBrowserChrome()
+        }
+    }
+    /// How far a floating sidebar's card sits inside the window's edges. The
+    /// buttons that line up with a top bar keep the same place in the card
+    /// that they have in a docked sidebar.
+    var floatingInset: CGFloat = 0 {
+        didSet {
+            guard floatingInset != oldValue else { return }
+            applyBrowserChrome()
+        }
+    }
     var isVisible = true {
         didSet {
             guard isVisible != oldValue else { return }
@@ -112,7 +152,7 @@ final class BrowserNativeWindowControlsHostView: NSView {
         applyTitleBar(to: window)
         applySystemToolbarMetrics(to: window)
         let shouldShowWindowControls = window.styleMask.showsWindowControls(
-            sidebarPresentationShowsControls: isVisible)
+            sidebarPresentationShowsControls: isVisible || isConcealingControls)
         for type in Self.buttonTypes {
             guard let button = window.standardWindowButton(type) else { continue }
             let shouldHide = !shouldShowWindowControls
@@ -143,24 +183,74 @@ final class BrowserNativeWindowControlsHostView: NSView {
     /// Move the existing AppKit controls inside their titlebar, retaining their
     /// native actions, accessibility, sizes and order. Fullscreen owns placement.
     private func positionWindowControls(onRight: Bool? = nil, animated: Bool = false) {
-        guard let window, animated || !isMovingControls, !window.styleMask.contains(.fullScreen) else { return }
+        guard let window, !isPositioning, animated || !isMovingControls, !window.styleMask.contains(.fullScreen)
+        else { return }
+        isPositioning = true
+        defer { isPositioning = false }
+        recordNativeButtonOrigins(in: window)
         let offset =
             (onRight ?? sidebarOnRight)
             ? window.styleMask.windowControlsSidebarOffset(
                 windowWidth: window.contentView?.bounds.width ?? bounds.width,
                 sidebarWidth: sidebarWidth
             ) : 0
+        let seat = cornerStyle.windowControlsOffset
+        // Level with a top bar, the row sits as far in from the window's side
+        // as its middle sits down from the top, in whichever corner style.
+        let seatWidth: CGFloat =
+            buttonCenterY.flatMap { centerY in
+                nativeButtonOrigins[.closeButton].flatMap { close in
+                    window.standardWindowButton(.closeButton).map { centerY - (close.x + $0.frame.width / 2) }
+                }
+            } ?? seat.width
         for type in Self.buttonTypes {
-            guard let button = window.standardWindowButton(type), let parent = button.superview else { continue }
-            if nativeButtonOrigins[type] == nil {
-                nativeButtonOrigins[type] = parent.convert(button.frame.origin, to: nil).x
+            guard let button = window.standardWindowButton(type), let parent = button.superview,
+                let native = nativeButtonOrigins[type]
+            else { continue }
+            let drop = buttonCenterY.map { centerY in
+                let nativeCenter = parent.convert(NSPoint(x: 0, y: native.y + button.frame.height / 2), to: nil)
+                return centerY + floatingInset - (window.frame.height - nativeCenter.y)
             }
-            guard let nativeX = nativeButtonOrigins[type] else { continue }
-            let target = parent.convert(NSPoint(x: nativeX + offset, y: 0), from: nil).x
-            if abs(button.frame.minX - target) > 0.5 {
-                (animated ? button.animator() : button).setFrameOrigin(NSPoint(x: target, y: button.frame.minY))
+            let shift = drop ?? seat.height
+            let cardShift = buttonCenterY == nil ? 0 : floatingInset * ((onRight ?? sidebarOnRight) ? -1 : 1)
+            let target = NSPoint(
+                x: parent.convert(
+                    NSPoint(x: native.x + offset + seatWidth + cardShift + slideOffset, y: 0), from: nil
+                ).x,
+                y: native.y + (parent.isFlipped ? shift : -shift)
+            )
+            if abs(button.frame.minX - target.x) > 0.5 || abs(button.frame.minY - target.y) > 0.5 {
+                (animated ? button.animator() : button).setFrameOrigin(target)
             }
         }
+    }
+
+    /// Lets AppKit seat its buttons and records where, all of them in one
+    /// pass, so none is measured where Crest had already moved it. A title
+    /// bar AppKit is still laying out has some buttons in their new seats and
+    /// some in their old; that is recorded only once they sit in one evenly
+    /// spaced row, which the next frame change brings.
+    private func recordNativeButtonOrigins(in window: NSWindow) {
+        guard nativeButtonOrigins.count < Self.buttonTypes.count else { return }
+        let buttons = Self.buttonTypes.compactMap { type in window.standardWindowButton(type).map { (type, $0) } }
+        if let titleBar = buttons.first?.1.superview {
+            titleBar.needsLayout = true
+            titleBar.layoutSubtreeIfNeeded()
+        }
+        let origins = buttons.compactMap { type, button in
+            button.superview.map { parent in
+                (type, NSPoint(x: parent.convert(button.frame.origin, to: nil).x, y: button.frame.minY))
+            }
+        }
+        guard origins.count == Self.buttonTypes.count, Self.formsOneRow(origins.map(\.1)) else { return }
+        nativeButtonOrigins = Dictionary(uniqueKeysWithValues: origins)
+    }
+
+    /// Whether `origins` sit level and evenly spaced, as AppKit seats them.
+    private static func formsOneRow(_ origins: [NSPoint]) -> Bool {
+        let spacings = zip(origins, origins.dropFirst()).map { $1.x - $0.x }
+        return origins.allSatisfy { abs($0.y - origins[0].y) < 0.5 }
+            && spacings.allSatisfy { $0 > 0 && abs($0 - spacings[0]) < 0.5 }
     }
 
     /// Takes the controls to the sidebar's new side inside the animation the
@@ -174,6 +264,41 @@ final class BrowserNativeWindowControlsHostView: NSView {
     func finishMovingWindowControls() {
         isMovingControls = false
         applyBrowserChrome()
+    }
+
+    /// Starts the buttons riding in with a sidebar that slides onto the
+    /// window, from off its edge, or out with one that slides away, and
+    /// returns the ride for `slideWindowControls` and its end.
+    func beginSlidingWindowControls(visible: Bool) -> Int {
+        slideGeneration += 1
+        isMovingControls = false
+        isConcealingControls = !visible
+        slideOffset = visible ? offWindowOffset : 0
+        isVisible = visible
+        positionWindowControls()
+        isMovingControls = true
+        return slideGeneration
+    }
+
+    /// Moves the buttons to where the ride ends, inside the animation the
+    /// sidebar slides with.
+    func slideWindowControls() {
+        slideOffset = isConcealingControls ? offWindowOffset : 0
+        positionWindowControls(animated: true)
+    }
+
+    func finishSlidingWindowControls(_ generation: Int) {
+        guard generation == slideGeneration else { return }
+        isConcealingControls = false
+        slideOffset = 0
+        finishMovingWindowControls()
+    }
+
+    /// Far enough across the window, toward the sidebar's edge, that the
+    /// buttons ride as far as the sidebar's card does.
+    private var offWindowOffset: CGFloat {
+        let distance = BrowserSidebarPresentation.floatingHoverRegionWidth(sidebarWidth: sidebarWidth)
+        return sidebarOnRight ? distance : -distance
     }
 
     func restoreWindowChrome() {
@@ -247,8 +372,8 @@ final class BrowserNativeWindowControlsHostView: NSView {
         if window.toolbar !== toolbar {
             window.toolbar = toolbar
         }
-        if window.toolbarStyle != .unified {
-            window.toolbarStyle = .unified
+        if window.toolbarStyle != cornerStyle.toolbarStyle {
+            window.toolbarStyle = cornerStyle.toolbarStyle
         }
         let shouldShowToolbar = window.styleMask.showsBrowserToolbar
         if toolbar.isVisible != shouldShowToolbar {
@@ -281,6 +406,19 @@ final class BrowserNativeWindowControlsHostView: NSView {
                     self?.windowChanged(name)
                 }
             }
+        }
+        // AppKit seats the buttons again whenever it lays the title bar out,
+        // which a Space swipe does on many frames. Putting them back in that
+        // same layout pass keeps them from showing in AppKit's seat first.
+        for type in Self.buttonTypes {
+            guard let button = window.standardWindowButton(type) else { continue }
+            button.postsFrameChangedNotifications = true
+            windowObservers.append(
+                NotificationCenter.default.addObserver(
+                    forName: NSView.frameDidChangeNotification, object: button, queue: nil
+                ) { [weak self] _ in
+                    MainActor.assumeIsolated { self?.positionWindowControls() }
+                })
         }
     }
 

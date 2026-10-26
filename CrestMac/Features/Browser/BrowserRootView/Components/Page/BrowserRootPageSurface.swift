@@ -10,6 +10,8 @@ import SwiftUI
 struct BrowserRootPageSurface: View, @MainActor Equatable {
     @Environment(\.spaceContentPresentation) private var contentPresentation
     @Environment(\.browserMacWindows) private var windows
+    @AppStorage(BrowserAddressBarPlacement.key, store: BrowserChromeAppearancePreference.defaults)
+    private var addressBarPlacementName = BrowserAddressBarPlacement.standard.name
     let model: BrowserRootModel
     let space: SpaceModel
     let isSelectedSpace: Bool
@@ -51,6 +53,13 @@ struct BrowserRootPageSurface: View, @MainActor Equatable {
 
     private var surfacePage: BrowserPage? {
         shownTab.flatMap { model.pages.surfacePage(for: $0.id, in: space, accessController: model.spaceAccess) }
+    }
+
+    /// Whether the address and page controls sit in a bar at the top of the
+    /// page rather than in the sidebar.
+    private var showsTopBar: Bool {
+        BrowserAddressBarPlacement.named(addressBarPlacementName)?.showsTopBar == true
+            && !model.spaceAccess.isLocked(space)
     }
 
     private var previewsStartPage: Bool {
@@ -105,14 +114,20 @@ struct BrowserRootPageSurface: View, @MainActor Equatable {
         if case .columns(let space, let members, let placeholderIndex) =
             presentation
         {
-            BrowserSplitPageSurface(
-                model: model,
-                space: space,
-                members: members,
-                placeholderIndex: placeholderIndex,
-                tabPromotionNamespace: tabPromotionNamespace,
-                shortcuts: shortcuts
-            )
+            // Cards side by side share one bar, above them on the frame.
+            VStack(spacing: 0) {
+                if showsTopBar {
+                    BrowserTopBar(model: model, space: space, placement: .aboveCards)
+                }
+                BrowserSplitPageSurface(
+                    model: model,
+                    space: space,
+                    members: members,
+                    placeholderIndex: placeholderIndex,
+                    tabPromotionNamespace: tabPromotionNamespace,
+                    shortcuts: shortcuts
+                )
+            }
         } else {
             BrowserRootDetailSurface(
                 adjoinsLeadingSidebar:
@@ -123,7 +138,10 @@ struct BrowserRootPageSurface: View, @MainActor Equatable {
                 completedNavigationCount: surfacePage?.completedNavigationCount ?? 0,
                 hasSelectedSpace: true,
                 handleWebContentInteraction: model.chrome.handleWebContentInteraction,
-                content: Group {
+                content: VStack(spacing: 0) {
+                    if showsTopBar {
+                        BrowserTopBar(model: model, space: space, placement: .inCard)
+                    }
                     if model.spaceAccess.isLocked(space) {
                         BrowserSpaceAccessView(
                             space: space,
@@ -157,6 +175,7 @@ struct BrowserRootPageSurface: View, @MainActor Equatable {
                                 windows: windows, layoutDirection: layoutDirection, shortcuts: shortcuts),
                             previewsStartPage: previewsStartPage
                         )
+                        .environment(\.browserTopBarHostsDeveloperToolbar, showsTopBar)
                     }
                 }
             )

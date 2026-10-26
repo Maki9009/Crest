@@ -74,6 +74,9 @@ final class BrowserPage: NSObject, BrowserMediaSessionCommandEndpoint {
     @ObservationIgnored private var isContentFullscreenStorage = false
     var faviconData: Data?
     var themeColor: NSColor?
+    /// The colour across the top of the document, read where the page's top
+    /// bar matches it.
+    var topColor: NSColor?
     /// Documents the page committed and finished, which reveal its surface.
     var committedNavigationCount = 0
     var completedNavigationCount = 0

@@ -7,6 +7,25 @@ struct BrowserDeveloperToolbar: View {
     let permissionCenter: BrowserSitePermissionCenter
 
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    var body: some View {
+        BrowserPageToolbarSurface(label: "Developer Toolbar", identifier: "developer-toolbar") {
+            BrowserDeveloperToolbarContent(
+                page: page, browser: browser, pages: pages, permissionCenter: permissionCenter)
+        } background: {
+            BrowserDeveloperToolbarBackground(isOpaque: reduceTransparency)
+        }
+    }
+}
+
+/// The developer toolbar's controls, which its own bar holds under the page's
+/// other chrome, or the top bar holds in place of the site's name.
+struct BrowserDeveloperToolbarContent: View {
+    let page: BrowserPage
+    let browser: BrowserStore
+    let pages: BrowserPagePool
+    let permissionCenter: BrowserSitePermissionCenter
+
     @State private var address = ""
     @State private var showsSiteSettings = false
     @State private var showsCaptureOptions = false
@@ -14,13 +33,9 @@ struct BrowserDeveloperToolbar: View {
         BrowserSitePermissionDisclosure.defaultIsExpanded
 
     var body: some View {
-        BrowserPageToolbarSurface(label: "Developer Toolbar", identifier: "developer-toolbar") {
-            controls
-        } background: {
-            BrowserDeveloperToolbarBackground(isOpaque: reduceTransparency)
-        }
-        .onAppear(perform: synchronizeAddress)
-        .onChange(of: page.live.displayURL) { _, _ in synchronizeAddress() }
+        controls
+            .onAppear(perform: synchronizeAddress)
+            .onChange(of: page.live.displayURL) { _, _ in synchronizeAddress() }
     }
 
     private var controls: some View {

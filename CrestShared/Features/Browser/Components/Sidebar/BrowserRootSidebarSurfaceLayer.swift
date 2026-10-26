@@ -14,6 +14,7 @@ struct BrowserRootSidebarSurfaceLayer<Content: View>: View {
     let content: Content
 
     @Environment(\.layoutDirection) private var layoutDirection
+    @Environment(\.browserWindowCornerRadius) private var windowCornerRadius
 
     init(
         presentation: BrowserSidebarPresentation,
@@ -144,7 +145,7 @@ struct BrowserRootSidebarSurfaceLayer<Content: View>: View {
 
     private var surfaceCornerRadius: CGFloat {
         usesFloatingCardAppearance
-            ? BrowserSidebarPresentation.floatingCardCornerRadius
+            ? BrowserSidebarPresentation.floatingCardCornerRadius(windowCornerRadius: windowCornerRadius)
             : 0
     }
 

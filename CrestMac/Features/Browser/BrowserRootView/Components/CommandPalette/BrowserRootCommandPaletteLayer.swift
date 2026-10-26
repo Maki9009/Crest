@@ -30,7 +30,9 @@ struct BrowserRootCommandPaletteLayer: View {
                     model.openPaletteURL(url, mode: mode, from: source, opening: opening, windows: windows)
                 },
                 dismiss: model.chrome.dismissCommandPalette,
-                morphNamespace: commandSurfaceNamespace,
+                // Only a palette with the address field on screen grows out
+                // of it; one without opens where it rests.
+                morphNamespace: model.commandPaletteGrowsFromField ? commandSurfaceNamespace : nil,
                 overlayContentInsets: contentInsets,
                 emptySelectionActions: model.emptySelectionPaletteActions,
                 openings: BrowserCommandPaletteOpening.all,

@@ -361,6 +361,16 @@ extension BrowserRootModel {
             chrome.hideSidebar()
             return
         }
+        // A sidebar the pointer is not on slides away as the page takes its
+        // room, in one motion, rather than floating first and leaving after.
+        guard isSidebarSurfaceHovered else {
+            cancelSidebarMorph()
+            withAnimation(accessibleAnimation(CrestMotion.sidebarMorph, reduceMotion)) {
+                isFloatingSidebarPresented = false
+                chrome.hideSidebar()
+            }
+            return
+        }
 
         let revision = beginSidebarMorph()
         sidebarMorphTask = Task { @MainActor [weak self] in
@@ -376,7 +386,7 @@ extension BrowserRootModel {
                 self.chrome.hideSidebar()
             }
             try? await self.sidebarMorphWait(
-                CrestMotion.sidebarMorphCompletionDelay
+                BrowserSidebarMotionSpeed.current.duration(CrestMotion.sidebarMorphCompletionDelay)
             )
             guard !Task.isCancelled,
                 self.finishSidebarMorph(revision),
@@ -400,6 +410,16 @@ extension BrowserRootModel {
             chrome.showSidebar()
             return
         }
+        // A hidden sidebar has no card for the page to make room for, so it
+        // slides in as the page moves aside, in one motion.
+        guard sidebarPresentation != .collapsed else {
+            cancelSidebarMorph()
+            withAnimation(accessibleAnimation(CrestMotion.sidebarMorph, reduceMotion)) {
+                isFloatingSidebarPresented = false
+                chrome.showSidebar()
+            }
+            return
+        }
         let revision = beginSidebarMorph()
         sidebarMorphTask = Task { @MainActor [weak self] in
             await Task.yield()
@@ -416,7 +436,7 @@ extension BrowserRootModel {
                 self.isSidebarApproachingDock = true
             }
             try? await self.sidebarMorphWait(
-                CrestMotion.sidebarDockApproachCompletionDelay
+                BrowserSidebarMotionSpeed.current.duration(CrestMotion.sidebarDockApproachCompletionDelay)
             )
             guard !Task.isCancelled,
                 self.sidebarMorphRevision == revision
@@ -431,7 +451,7 @@ extension BrowserRootModel {
                 self.chrome.showSidebar()
             }
             try? await self.sidebarMorphWait(
-                CrestMotion.sidebarDockAttachmentCompletionDelay
+                BrowserSidebarMotionSpeed.current.duration(CrestMotion.sidebarDockAttachmentCompletionDelay)
             )
             guard !Task.isCancelled,
                 self.sidebarMorphRevision == revision
@@ -636,13 +656,20 @@ extension BrowserRootModel {
     }
 
     /// Which side of the field-to-palette morph holds the shared identity. The
-    /// field is on screen whenever the sidebar is, docked or floating.
+    /// field is on screen whenever the sidebar is, docked or floating, unless
+    /// the top bar holds the address instead.
     func commandPaletteHandoff(reduceMotion: Bool) -> BrowserCommandPaletteHandoff {
         .resolve(
             isPaletteShown: isCommandPaletteShown,
-            isFieldOnScreen: sidebarPresentation.showsSidebar,
+            isFieldOnScreen: commandPaletteGrowsFromField,
             animates: BrowserCommandSurfaceMorph.animatesCommandPalette(reduceMotion: reduceMotion)
         )
+    }
+
+    /// Whether the palette has the sidebar's address field on screen to grow
+    /// out of. Otherwise it opens where it rests.
+    var commandPaletteGrowsFromField: Bool {
+        sidebarPresentation.showsSidebar && !BrowserAddressBarPlacement.current.showsTopBar
     }
 
     var selectedTabAssignment: BrowserTabRuntimeAssignment? {
@@ -768,11 +795,12 @@ private struct BrowserMacPaletteOpener: BrowserCommandPaletteOpener {
 // MARK: - Animation
 
 extension BrowserRootModel {
+    /// A sidebar animation at the speed the person chose.
     func accessibleAnimation(
         _ animation: Animation,
         _ reduceMotion: Bool
     ) -> Animation? {
-        animation.unlessReducingMotion(reduceMotion)
+        BrowserSidebarMotionSpeed.current.animation(animation)?.unlessReducingMotion(reduceMotion)
     }
 }
 

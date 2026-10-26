@@ -33,6 +33,7 @@ struct SpaceSidebarAddressBand: View {
             }
         } trailingAccessory: {
             if let siteControl {
+                BrowserAddressCopyLinkButton(page: siteControl.page)
                 BrowserSiteControlButton(configuration: siteControl)
             }
         }

@@ -16,6 +16,12 @@ struct BrowserRootShell: View, BrowserChromeAnimating {
     @State private var spacePagerPresentation = SpacePagerPresentation()
     @AppStorage(SidebarFullscreenRevealPreference.key, store: BrowserChromeAppearancePreference.defaults)
     private var revealsSidebarInFullscreen = SidebarFullscreenRevealPreference.defaultValue
+    @AppStorage(BrowserWindowCornerStyle.key, store: BrowserChromeAppearancePreference.defaults)
+    private var windowCornerStyleName = BrowserWindowCornerStyle.standard.name
+    @AppStorage(BrowserSidebarMotionSpeed.key, store: BrowserChromeAppearancePreference.defaults)
+    private var sidebarRate = BrowserSidebarMotionSpeed.standard.rate
+    @AppStorage(BrowserAddressBarPlacement.key, store: BrowserChromeAppearancePreference.defaults)
+    private var addressBarPlacementName = BrowserAddressBarPlacement.standard.name
 
     /// The shell places the sidebar; the page frames under it read the rest.
     private var sidebarOnRight: Bool { BrowserDeviceAppearanceStore.shared.sidebarOnRight }
@@ -54,7 +60,11 @@ struct BrowserRootShell: View, BrowserChromeAnimating {
             BrowserNativeWindowControlsBridge(
                 isVisible: model.sidebarPresentation.showsWindowControls,
                 sidebarOnRight: sidebarOnRight,
-                sidebarWidth: model.sidebarWidth
+                sidebarWidth: model.sidebarWidth,
+                cornerStyle: BrowserWindowCornerStyle.named(windowCornerStyleName) ?? .standard,
+                buttonCenterY: addressBarPlacement.windowControlsCenterY(
+                    frameWidth: BrowserChromeAppearance.device(windowCornerRadius: nil).frameWidth),
+                floatingInset: model.sidebarPresentation == .floating ? BrowserSidebarPresentation.floatingCardInset : 0
             )
             .frame(maxWidth: .infinity)
             .frame(height: 0)
@@ -100,7 +110,7 @@ struct BrowserRootShell: View, BrowserChromeAnimating {
         )
         .animation(chromeAnimation(CrestMotion.collection), value: sidebarOnRight)
         .animation(
-            chromeAnimation(
+            sidebarAnimation(
                 model.isSidebarApproachingDock
                     ? CrestMotion.sidebarDockAttachment
                     : CrestMotion.sidebarMorph
@@ -108,7 +118,7 @@ struct BrowserRootShell: View, BrowserChromeAnimating {
             value: model.chrome.columnVisibility
         )
         .animation(
-            chromeAnimation(
+            sidebarAnimation(
                 model.isSidebarApproachingDock
                     ? CrestMotion.sidebarDockAttachment
                     : model.isSidebarMorphing
@@ -118,11 +128,12 @@ struct BrowserRootShell: View, BrowserChromeAnimating {
             value: model.isFloatingSidebarPresented
         )
         .animation(
-            chromeAnimation(CrestMotion.sidebarDockApproach),
+            sidebarAnimation(CrestMotion.sidebarDockApproach),
             value: model.isSidebarApproachingDock
         )
         .animation(
-            BrowserCommandSurfaceMorph.commandPaletteAnimation(reduceMotion: reduceMotion),
+            BrowserCommandSurfaceMorph.commandPaletteAnimation(
+                reduceMotion: reduceMotion, growsFromField: model.commandPaletteGrowsFromField),
             value: model.isCommandPaletteShown
         )
         .onChange(
@@ -152,6 +163,16 @@ struct BrowserRootShell: View, BrowserChromeAnimating {
         }
     }
 
+    /// A sidebar animation at the speed the person chose.
+    private func sidebarAnimation(_ animation: Animation) -> Animation? {
+        BrowserSidebarMotionSpeed(rate: sidebarRate).animation(animation)
+            .flatMap(chromeAnimation)
+    }
+
+    private var addressBarPlacement: BrowserAddressBarPlacement {
+        BrowserAddressBarPlacement.named(addressBarPlacementName) ?? .standard
+    }
+
     private var standardContent: some View {
         ZStack(alignment: .leading) {
             BrowserRootBackdrop(
@@ -165,6 +186,8 @@ struct BrowserRootShell: View, BrowserChromeAnimating {
                 edge: sidebarEdge,
                 isApproachingDock: model.isSidebarApproachingDock
             ) {
+                // Each Space's card carries its own top bar, so the bar
+                // reads as part of the page and moves with it.
                 BrowserSpacePageSurface(
                     model: model, transientBrowsing: transientBrowsing,
                     tabPromotionNamespace: tabPromotionNamespace, shortcuts: shortcuts

@@ -38,13 +38,13 @@ enum CrestMotion {
     /// Showing or hiding the app's primary browser chrome.
     static let chromeTransition: TimeInterval = 0.28
     /// Handing the sidebar surface between its docked and floating placements.
-    static let sidebarMorphTransition: TimeInterval = 0.28
+    static let sidebarMorphTransition: TimeInterval = 0.2
     /// Moving page surfaces aside before a floating sidebar attaches to the row.
-    static let sidebarDockApproachTransition: TimeInterval = 0.22
+    static let sidebarDockApproachTransition: TimeInterval = 0.16
     /// The short final handoff from the floating sidebar card to its docked seat.
-    static let sidebarDockAttachmentTransition: TimeInterval = 0.16
+    static let sidebarDockAttachmentTransition: TimeInterval = 0.12
     /// Letting the undocked sidebar retreat after pointer interaction ends.
-    static let sidebarRetreatTransition: TimeInterval = 0.30
+    static let sidebarRetreatTransition: TimeInterval = 0.2
     /// Keeps phased sidebar work aligned with the visible geometry handoff.
     static let sidebarMorphCompletionDelay: Duration = .seconds(
         sidebarMorphTransition
@@ -127,18 +127,10 @@ enum CrestMotion {
     static var dragPreview: Animation { .smooth(duration: dragPreviewTransition) }
     static var navigation: Animation { .snappy(duration: navigationTransition) }
     static var chrome: Animation { .smooth(duration: chromeTransition) }
-    static var sidebarMorph: Animation {
-        .smooth(duration: sidebarMorphTransition)
-    }
-    static var sidebarDockApproach: Animation {
-        .smooth(duration: sidebarDockApproachTransition)
-    }
-    static var sidebarDockAttachment: Animation {
-        .smooth(duration: sidebarDockAttachmentTransition)
-    }
-    static var sidebarRetreat: Animation {
-        .smooth(duration: sidebarRetreatTransition)
-    }
+    static var sidebarMorph: Animation { sidebarSlide(sidebarMorphTransition) }
+    static var sidebarDockApproach: Animation { sidebarSlide(sidebarDockApproachTransition) }
+    static var sidebarDockAttachment: Animation { sidebarSlide(sidebarDockAttachmentTransition) }
+    static var sidebarRetreat: Animation { sidebarSlide(sidebarRetreatTransition) }
     static var floatingPane: Animation { .smooth(duration: floatingPaneTransition) }
     static var toolbar: Animation { .snappy(duration: toolbarTransition) }
     static var dismissal: Animation { .easeOut(duration: dismissalTransition) }
@@ -184,5 +176,11 @@ enum CrestMotion {
     }
     static var reloadTurnIn: Animation {
         .easeIn(duration: reloadFeedbackPhaseSeconds)
+    }
+
+    /// The sidebar's moves: off the mark at once and into place without the
+    /// long settle a spring takes, so it lands as soon as it arrives.
+    private static func sidebarSlide(_ duration: TimeInterval) -> Animation {
+        .timingCurve(0.2, 0.8, 0.2, 1, duration: duration)
     }
 }

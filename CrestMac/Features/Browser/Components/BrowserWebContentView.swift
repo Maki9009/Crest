@@ -13,6 +13,8 @@ struct BrowserWebContentView: View {
 
     @Environment(\.browserWebFocusRestorationGate)
     private var browserFocusRestorationGate
+    @Environment(\.browserTopBarHostsDeveloperToolbar)
+    private var topBarHostsDeveloperToolbar
 
     var body: some View {
         VStack(spacing: 0) {
@@ -42,7 +44,7 @@ struct BrowserWebContentView: View {
                 if isShownPage, !page.readerModeState.isActive, page.translation.showsToolbar {
                     BrowserTranslationToolbar(translation: page.translation)
                 }
-                if page.isDeveloperModeEnabled {
+                if page.isDeveloperModeEnabled, !topBarHostsDeveloperToolbar || isQuickWindowPage {
                     BrowserDeveloperToolbar(
                         page: page, browser: browser, pages: pages,
                         permissionCenter: pages.permissionCenter

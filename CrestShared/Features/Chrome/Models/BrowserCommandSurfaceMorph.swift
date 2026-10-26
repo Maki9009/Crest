@@ -16,6 +16,10 @@ struct BrowserCommandSurfaceMorph: Hashable, Sendable {
     /// the sidebar makes between its docked and floating placements.
     static let animation = CrestMotion.sidebarMorph
 
+    /// The palette's arrival and departure where it has no field to grow out
+    /// of: a quick fade and settle in place.
+    static let inPlaceAnimation = CrestMotion.contentReveal
+
     /// A fade that runs as the frame starts to move: the field letting go and
     /// the palette's glass taking over on open, the palette's contents
     /// clearing on close.
@@ -66,9 +70,11 @@ struct BrowserCommandSurfaceMorph: Hashable, Sendable {
     }
 
     /// The pace of the palette's arrival and departure, or nil when it
-    /// opens and closes at once.
+    /// opens and closes at once. A palette with no field on screen to grow
+    /// out of opens in place, on a quicker pace.
     @MainActor
-    static func commandPaletteAnimation(reduceMotion: Bool) -> Animation? {
-        animatesCommandPalette(reduceMotion: reduceMotion) ? animation : nil
+    static func commandPaletteAnimation(reduceMotion: Bool, growsFromField: Bool = true) -> Animation? {
+        guard animatesCommandPalette(reduceMotion: reduceMotion) else { return nil }
+        return growsFromField ? animation : inPlaceAnimation
     }
 }

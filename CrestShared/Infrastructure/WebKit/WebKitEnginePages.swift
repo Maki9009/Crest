@@ -236,8 +236,12 @@ final class WebKitEnginePages: EnginePages {
         guard let page = page(finding.pageID) else { return false }
         let configuration = BrowserFindConfiguration(backwards: finding.backwards, caseSensitive: finding.caseSensitive)
         page.webView.performFind(finding.query, configuration: configuration) { [weak self] result in
-            // WebKit tells only whether it found a match, never how many.
-            let finished = FindFinished(pageID: finding.pageID, matches: result.matchFound ? nil : 0, activeMatch: 0)
+            // WebKit's own find, the fallback, tells only whether it found a
+            // match, never how many.
+            let finished = FindFinished(
+                pageID: finding.pageID,
+                matches: result.matches?.total ?? (result.matchFound ? nil : 0),
+                activeMatch: result.matches?.active ?? 0)
             self?.attached.present(.findFinished(finished))
         }
         return true

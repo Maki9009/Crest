@@ -16,8 +16,6 @@ struct BrowserSidebarLoadedContent: View {
     let activateAddress: () -> Void
     let submitAddress: () -> Void
     let openNewTab: () -> Void
-    let sidebarToggleAction: BrowserSidebarToggleAction
-    let toggleSidebar: () -> Void
     let commandSurfaceNamespace: Namespace.ID
     let commandPaletteHandoff: BrowserCommandPaletteHandoff
     let tabPromotionNamespace: Namespace.ID
@@ -93,7 +91,6 @@ struct BrowserSidebarLoadedContent: View {
 
             BrowserSpaceSwitcher(
                 browser: context.browser,
-                downloadCenter: context.pageAccess.downloadCenter,
                 capabilities: context.capabilities,
                 selectSpace: context.selectSpace,
                 accessories: switcherAccessories
@@ -163,11 +160,23 @@ struct BrowserSidebarLoadedContent: View {
     }
 
     private var switcherAccessories: BrowserSpaceSwitcherAccessories {
-        let spaceID = context.browser.shownSpace?.id
+        let space = context.browser.shownSpace
+        let spaceID = space?.id
+        let utilityPresentation = context.utilityPresentation
+        // A locked Space shows none of its downloads.
+        let assignment = space.flatMap {
+            context.spaceAccess.isLocked($0) ? nil : BrowserSpaceRuntimeAssignment(space: $0)
+        }
         return BrowserSpaceSwitcherAccessories(
-            sidebarToggle: BrowserSpaceSwitcherSidebarToggle(
-                action: sidebarToggleAction,
-                toggle: toggleSidebar
+            downloads: BrowserSpaceSwitcherDownloadsControl(
+                downloadCenter: context.pageAccess.downloadCenter,
+                assignment: assignment,
+                tint: space?.settings.look.colors.first?.color ?? .accentColor,
+                isPresented: utilityPresentation.isDownloadsPresented,
+                setPresented: utilityPresentation.setDownloadsPresented,
+                actions: context.utilityActions,
+                showAll: { utilityPresentation.present(.downloads) },
+                recordFrame: utilityPresentation.recordDownloadsFrame
             ),
             commonLists: BrowserSpaceSwitcherCommonLists(
                 isExpanded: context.utilityPresentation.isSwitcherExpanded,
@@ -415,8 +424,6 @@ final class BrowserSidebarWidgetDeckScrollObserverView: NSView {
             activateAddress: { isAddressEditing = true },
             submitAddress: {},
             openNewTab: {},
-            sidebarToggleAction: .hide,
-            toggleSidebar: {},
             commandSurfaceNamespace: commandSurfaceNamespace,
             commandPaletteHandoff: .neither,
             tabPromotionNamespace: tabPromotionNamespace

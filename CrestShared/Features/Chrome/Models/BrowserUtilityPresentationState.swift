@@ -32,7 +32,14 @@ final class BrowserUtilityPresentationState {
         }
     }
     @ObservationIgnored private var isSiteControlContextMenuPresentedStorage = false
+    private(set) var isDownloadsPresented: Bool {
+        get { observed(\.isDownloadsPresentedStorage, as: \.isDownloadsPresented) }
+        set { publish(newValue, into: \.isDownloadsPresentedStorage, as: \.isDownloadsPresented) }
+    }
+    @ObservationIgnored private var isDownloadsPresentedStorage = false
     private(set) var triggerFrameInGlobal: CGRect?
+    /// Where the downloads button stands, which a starting download flies to.
+    private(set) var downloadsFrameInGlobal: CGRect?
     private(set) var searchFocusRequest = 0
     @ObservationIgnored private var consumedSearchFocusRequest = 0
     @ObservationIgnored private let defaults: UserDefaults?
@@ -61,12 +68,22 @@ final class BrowserUtilityPresentationState {
     }
 
     var isSidebarInteractionActive: Bool {
-        isSwitcherExpanded || isSiteControlInteractionActive
+        isSwitcherExpanded || isSiteControlInteractionActive || isDownloadsPresented
     }
 
     func recordTriggerFrame(_ frame: CGRect) {
         guard frame != triggerFrameInGlobal else { return }
         triggerFrameInGlobal = frame
+    }
+
+    func recordDownloadsFrame(_ frame: CGRect) {
+        guard frame != downloadsFrameInGlobal else { return }
+        downloadsFrameInGlobal = frame
+    }
+
+    func setDownloadsPresented(_ isPresented: Bool) {
+        guard isPresented != isDownloadsPresented else { return }
+        isDownloadsPresented = isPresented
     }
 
     func setSiteControlPresented(_ isPresented: Bool) {
@@ -157,14 +174,13 @@ final class BrowserUtilityPresentationState {
         isSwitcherExpanded = false
     }
 
-    /// Opens the lists for the Space `spaceID` names, or closes them: unseen
-    /// finished downloads open Downloads, otherwise the list chosen for that
-    /// Space.
-    func toggleSwitcher(for spaceID: UUID?, hasNewDownloads: Bool = false) {
+    /// Opens the list chosen for the Space `spaceID` names, or closes the
+    /// lists.
+    func toggleSwitcher(for spaceID: UUID?) {
         if isSwitcherExpanded {
             dismiss()
         } else {
-            present(hasNewDownloads ? .downloads : triggerSurface(for: spaceID))
+            present(triggerSurface(for: spaceID))
         }
     }
 

@@ -277,6 +277,12 @@
     "%@ is using this tab" : {
       "comment" : "The bar on a page an agent uses."
     },
+    "%@ left" : {
+
+    },
+    "%@ of %@" : {
+
+    },
     "%@ of %@ · %@" : {
       "localizations" : {
         "en" : {
@@ -692,6 +698,9 @@
         }
       }
     },
+    "%lld downloads paused" : {
+
+    },
     "%lld identical duplicates will be skipped." : {
 
     },
@@ -700,6 +709,9 @@
     },
     "%lld left out" : {
       "comment" : "How many of a browser's profiles or Spaces an import cannot bring, shown in the import review."
+    },
+    "%lld new downloads" : {
+
     },
     "%lld of %lld" : {
       "localizations" : {
@@ -1560,6 +1572,9 @@
 
     },
     "90 Days" : {
+
+    },
+    "A download needs attention" : {
 
     },
     "A field in this password file is too large to import safely." : {
@@ -2568,6 +2583,9 @@
 
     },
     "Back to review" : {
+
+    },
+    "Back to Tabs" : {
 
     },
     "Background" : {
@@ -5371,6 +5389,9 @@
     "Download More Languages…" : {
 
     },
+    "Download paused" : {
+
+    },
     "Download Progress" : {
       "localizations" : {
         "ar" : {
@@ -5397,6 +5418,12 @@
 
     },
     "Downloading" : {
+
+    },
+    "Downloading “%@”" : {
+
+    },
+    "Downloading %lld files" : {
 
     },
     "Downloading Update" : {
@@ -8334,6 +8361,9 @@
         }
       }
     },
+    "Moved or deleted" : {
+
+    },
     "Moves all current tabs to Archive" : {
 
     },
@@ -8427,6 +8457,9 @@
 
     },
     "New Current Tabs Folder" : {
+
+    },
+    "New download" : {
 
     },
     "New Folder" : {
@@ -8998,6 +9031,9 @@
           }
         }
       }
+    },
+    "Open “%@”" : {
+
     },
     "Open %@" : {
       "localizations" : {
@@ -10675,6 +10711,9 @@
     "Remove Extension…" : {
 
     },
+    "Remove finished, failed and canceled downloads from the list" : {
+
+    },
     "Remove from %@" : {
       "localizations" : {
         "ar" : {
@@ -10697,6 +10736,9 @@
       }
     },
     "Remove from Folder" : {
+
+    },
+    "Remove from List" : {
 
     },
     "Remove from Selection" : {
@@ -11127,6 +11169,9 @@
       }
     },
     "Retry" : {
+
+    },
+    "Retry Download" : {
 
     },
     "Retry the action on the page. Crest did not reopen the blocked pop-up." : {
@@ -12209,6 +12254,9 @@
 
     },
     "Show All" : {
+
+    },
+    "Show All Downloads" : {
 
     },
     "Show all results" : {

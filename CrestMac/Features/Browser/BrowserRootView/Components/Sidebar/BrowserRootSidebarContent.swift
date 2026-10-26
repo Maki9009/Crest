@@ -30,11 +30,6 @@ struct BrowserRootSidebarContent: View {
                 activateAddress: { model.chrome.openLocation(model.address) },
                 submitAddress: model.submitAddress,
                 openNewTab: model.openNewTab,
-                sidebarToggleAction:
-                    model.sidebarPresentation.sidebarToggleAction,
-                toggleSidebar: {
-                    model.toggleSidebar(reduceMotion: reduceMotion)
-                },
                 commandSurfaceNamespace: commandSurfaceNamespace,
                 commandPaletteHandoff: model.commandPaletteHandoff(reduceMotion: reduceMotion),
                 tabPromotionNamespace: tabPromotionNamespace

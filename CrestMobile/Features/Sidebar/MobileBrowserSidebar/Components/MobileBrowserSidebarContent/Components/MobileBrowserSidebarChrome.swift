@@ -9,7 +9,6 @@ struct MobileBrowserSidebarChrome: View {
 
             BrowserSpaceSwitcher(
                 browser: configuration.context.browser,
-                downloadCenter: configuration.context.pageAccess.downloadCenter,
                 capabilities: configuration.context.capabilities,
                 selectSpace: configuration.context.selectSpace
             )

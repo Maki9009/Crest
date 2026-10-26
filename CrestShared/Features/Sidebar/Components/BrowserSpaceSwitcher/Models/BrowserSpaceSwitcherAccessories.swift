@@ -1,28 +1,54 @@
-import CoreGraphics
+import SwiftUI
 
 /// The controls a shell asks the Space switcher to carry alongside its
 /// Spaces.
 ///
 /// Only an arrangement with room either side of its picker can carry any, so
-/// each one is optional and the scrolling track ignores both. They are inputs
-/// rather than a fixed pair because the same strip should be able to lose the
-/// sidebar toggle — a docked window has nothing to toggle — without the
-/// switcher learning about docking.
+/// each one is optional and the scrolling track ignores both.
 struct BrowserSpaceSwitcherAccessories {
-    var sidebarToggle: BrowserSpaceSwitcherSidebarToggle?
+    var downloads: BrowserSpaceSwitcherDownloadsControl?
     var commonLists: BrowserSpaceSwitcherCommonLists?
 }
 
-/// The switcher's accessory at the window's edge: show or hide the sidebar
-/// the switcher is standing in.
-struct BrowserSpaceSwitcherSidebarToggle {
-    let action: BrowserSidebarToggleAction
-    let toggle: () -> Void
+/// The switcher's accessory at the window's edge: the shown Space's downloads
+/// at a glance, and the popover that lists them.
+///
+/// It carries the download center rather than the records, so only the button
+/// and its popover read them, and a download's progress redraws nothing else.
+struct BrowserSpaceSwitcherDownloadsControl {
+    let downloadCenter: BrowserDownloadCenter
+
+    /// The shown Space, or nil while it is locked, which shows no downloads.
+    let assignment: BrowserSpaceRuntimeAssignment?
+
+    /// The Space's own accent, which the button wears unless something needs
+    /// attention.
+    let tint: Color
+    let isPresented: Bool
+    let setPresented: (Bool) -> Void
+    let actions: BrowserUtilityListActions
+
+    /// Opens the full, searchable Downloads list in the sidebar.
+    let showAll: () -> Void
+
+    /// Reports where the button ended up, so a starting download flies to it.
+    let recordFrame: (CGRect) -> Void
+
+    /// Everything the shown Space's profile has downloaded, newest first.
+    @MainActor var items: [DownloadState] {
+        guard let assignment else { return [] }
+        return downloadCenter.items(for: assignment.profileID).sorted { $0.createdAt > $1.createdAt }
+    }
+
+    /// Marks the shown Space's downloads seen, as opening their list does.
+    @MainActor func acknowledge() {
+        guard let assignment else { return }
+        downloadCenter.acknowledgeItems(for: assignment.profileID)
+    }
 }
 
 /// The switcher's accessory on the page side: the archive, history, and
-/// downloads lists, and the badge that says how many finished downloads have
-/// not been looked at yet.
+/// downloads lists.
 struct BrowserSpaceSwitcherCommonLists {
     let isExpanded: Bool
 

@@ -21,13 +21,12 @@ extension EngineCommand {
             // WebKit reports no tab groups, so the core never asks it for one.
             break
         case .loadPage(let command): command.perform(on: binding)
-        case .pauseEngineDownload, .resumeEngineDownload:
-            // WebKit downloads do not advertise these controls.
-            break
+        case .pauseEngineDownload(let command): command.perform(on: binding)
         case .readSiteData(let command): command.perform(on: binding)
         case .recoverPage(let command): command.perform(on: binding)
         case .rejectOfferedPage(let command): command.perform(on: binding)
         case .removeEngineDownload(let command): command.perform(on: binding)
+        case .resumeEngineDownload(let command): command.perform(on: binding)
         case .settleAuthentication(let command): command.perform(on: binding)
         case .settleDownloadDestination(let command): command.perform(on: binding)
         case .settleExtensionInstall(let command): command.perform(on: binding)

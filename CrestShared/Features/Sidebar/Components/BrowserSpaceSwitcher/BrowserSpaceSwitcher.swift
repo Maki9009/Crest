@@ -15,11 +15,6 @@ struct BrowserSpaceSwitcher: View {
     private let appearance = BrowserDeviceAppearanceStore.shared
 
     let browser: BrowserStore
-
-    /// Held directly rather than behind the sidebar's page seam, the way
-    /// `BrowserSidebarUtilityCoordinator` holds it: the switcher issues no page
-    /// commands, it only needs to know what the profile has downloaded.
-    let downloadCenter: BrowserDownloadCenter
     let capabilities: BrowserInteractionCapabilities
     let selectSpace: (UUID) -> Void
     var accessories = BrowserSpaceSwitcherAccessories()
@@ -37,8 +32,7 @@ struct BrowserSpaceSwitcher: View {
                 iconSizing: appearance.spaceIconSizing,
                 chosenIconScale: appearance.spaceIconScale,
                 selectSpace: selectSpace,
-                accessories: accessories,
-                downloads: downloads
+                accessories: accessories
             )
         case .scrollingSegments:
             BrowserSpaceSwitcherScrollingSegments(
@@ -51,19 +45,6 @@ struct BrowserSpaceSwitcher: View {
                 selectSpace: selectSpace
             )
         }
-    }
-
-    /// Read only where an accessory is there to wear the badge, so a shell
-    /// without one never touches the download center from here.
-    private var downloads: BrowserSpaceSwitcherDownloads {
-        guard accessories.commonLists != nil,
-            let space = browser.shownSpace
-        else { return .none }
-        return BrowserSpaceSwitcherDownloads(
-            items: downloadCenter.items(for: space.profileID),
-            newItems: downloadCenter.unacknowledgedItems(for: space.profileID),
-            badgeColor: space.settings.look.colors.first?.color ?? .accentColor
-        )
     }
 
     private var spaces: [BrowserSpaceIdentity] {

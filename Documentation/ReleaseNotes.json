@@ -4589,6 +4589,18 @@
     "website-data-locked-space-guard": {
       "category": "internal",
       "message": "Listing or clearing a locked Space's website data is refused until it is unlocked, Remove All clears every site's data in the Space, and the site commands on iPhone and iPad need a page that shows a site."
+    },
+    "downloads-popover": {
+      "category": "new",
+      "message": "The button in the sidebar's bottom corner now shows your downloads. A ring tracks their progress and a badge counts new ones, and a click opens a list where each file shows its size, speed and time left and can be paused, resumed, retried, opened, shown in Finder or dragged out."
+    },
+    "webkit-download-pause-resume": {
+      "category": "improved",
+      "message": "Downloads in WebKit pages can now be paused and resumed, and a failed one can be retried from where it stopped."
+    },
+    "utility-list-back-to-tabs": {
+      "category": "improved",
+      "message": "While Archive, History or Downloads fills the sidebar, the button in its corner takes you back to your tabs."
     }
   }
 }

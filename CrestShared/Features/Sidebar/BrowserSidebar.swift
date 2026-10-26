@@ -106,20 +106,12 @@ struct BrowserSidebar<Content: View>: View {
         utilityCoordinator.selectedDownloads.map(\.id)
     }
 
-    private var newUtilityDownloads: [DownloadState] {
-        guard let profileID = browser.shownSpace?.profileID else { return [] }
-        return pageAccess.downloadCenter.unacknowledgedItems(for: profileID)
-    }
-
     private func dismissUtilityOnBlankSpace() {
         utilityPresentation.handleInteraction(.sidebarBlankSpace)
     }
 
     private func toggleUtilitySwitcher() {
-        utilityPresentation.toggleSwitcher(
-            for: browser.shownSpace?.id,
-            hasNewDownloads: !newUtilityDownloads.isEmpty
-        )
+        utilityPresentation.toggleSwitcher(for: browser.shownSpace?.id)
     }
 
     private func confirmClearHistory(for space: SpaceModel) {

@@ -10,7 +10,11 @@ import WebKit
 /// quarantined, to the place the core settled once WebKit finishes. A download
 /// no person started passes the site's automatic-download choice first, which
 /// the core answers or asks the person about; one it refuses waits for the
-/// person's retry, which replays its request under the same name.
+/// person's retry, which replays its request under the same name. WebKit has
+/// no pause of its own, so a paused download stops with the data that resumes
+/// it, its partial file kept in the staging folder, and a failed one resumes
+/// the same way, or replays its request from the start when WebKit kept no
+/// such data.
 @MainActor
 final class WebKitDownloads: NSObject {
     // MARK: - Types
@@ -22,6 +26,12 @@ final class WebKitDownloads: NSObject {
         let profileID: UUID
         let pageID: UUID
         weak var page: WebKitEnginePage?
+        /// The store its page browses in, which a web view that carries the
+        /// download on after the page closed must share.
+        let dataStore: WKWebsiteDataStore
+        /// The web view kept only to carry the download on once its page
+        /// closed, until the download ends.
+        var carrier: WKWebView?
         let startedAt = Date.now
         /// The request a retry replays, when WebKit can replay it.
         let replay: URLRequest?
@@ -41,15 +51,37 @@ final class WebKitDownloads: NSObject {
         var received: Int64 = 0
         var total: Int64 = 0
         var isPaused = false
+        /// The download is stopping to pause, until WebKit hands over the data
+        /// that resumes it.
+        var isPausing = false
+        /// What WebKit kept to resume the paused or failed download from where
+        /// it stopped.
+        var resumeData: Data?
+        /// The next destination WebKit asks for starts the file again from
+        /// nothing, because the request is replayed rather than resumed.
+        var restartsFromScratch = false
         /// The core's question about where the file goes, while it waits.
         var destinationPrompt: UUID?
         var staging: URL?
         var destination: URL?
         var isCanceling = false
         var hasEnded = false
+        var hasFailed = false
 
         /// The engine's name for the download, which the core keeps it by.
         var engineID: String { id.uuidString }
+
+        /// Whether the person can pause it: only a running download whose
+        /// request can be replayed, so a pause WebKit cannot resume from still
+        /// starts the file again rather than losing it.
+        var canPause: Bool {
+            download != nil && destination != nil && !isPaused && !isPausing && !hasEnded && replay != nil
+        }
+
+        /// Whether the person can take up the paused or failed download again.
+        var canResume: Bool {
+            download == nil && !isPausing && (isPaused || hasFailed) && (resumeData != nil || replay != nil)
+        }
 
         init(
             profileID: UUID, page: WebKitEnginePage, replay: URLRequest?, sourceURL: URL?, origin: SiteOrigin?,
@@ -58,6 +90,7 @@ final class WebKitDownloads: NSObject {
             self.profileID = profileID
             pageID = page.id
             self.page = page
+            dataStore = page.webView.configuration.websiteDataStore
             self.replay = replay
             self.sourceURL = sourceURL
             self.origin = origin
@@ -151,9 +184,12 @@ final class WebKitDownloads: NSObject {
     func cancel(_ engineID: String) {
         guard let transfer = transfers[engineID], !transfer.hasEnded else { return }
         transfer.isCanceling = true
-        if let download = transfer.download {
+        if let download = transfer.download, !transfer.isPausing {
             download.cancel { _ in }
         } else {
+            // A paused download, or one stopping to pause, has nothing left
+            // running to cancel.
+            transfer.isPausing = false
             end(transfer, .canceled)
         }
         if let prompt = transfer.destinationPrompt { destinations.removeValue(forKey: prompt)?.resume(returning: nil) }
@@ -162,7 +198,78 @@ final class WebKitDownloads: NSObject {
     /// Forgets a download the core cleared, stopping it first if it still runs.
     func remove(_ engineID: String) {
         cancel(engineID)
+        if let transfer = transfers[engineID] { discardPartialFile(of: transfer) }
         transfers[engineID] = nil
+    }
+
+    /// Pauses a running download the person paused: WebKit stops it and hands
+    /// over the data that resumes it, and the partial file stays staged.
+    func pause(_ engineID: String) {
+        guard let transfer = transfers[engineID], transfer.canPause, let download = transfer.download else { return }
+        transfer.isPausing = true
+        download.cancel { [weak self] resumeData in
+            self?.paused(transfer, download, resumeData: resumeData)
+        }
+    }
+
+    /// Takes up a paused or failed download from where it stopped, or from
+    /// the start when WebKit kept nothing to resume it from.
+    func resume(_ engineID: String) {
+        guard let transfer = transfers[engineID], transfer.canResume else { return }
+        let webView = carrier(for: transfer)
+        transfer.isPaused = false
+        transfer.hasEnded = false
+        transfer.hasFailed = false
+        if let resumeData = transfer.resumeData {
+            transfer.resumeData = nil
+            webView.resumeDownload(fromResumeData: resumeData) { [weak self] download in
+                self?.resumed(transfer, download, engineID: engineID)
+            }
+        } else if let request = transfer.replay {
+            transfer.isApprovedRetry = true
+            transfer.restartsFromScratch = true
+            transfer.received = 0
+            webView.startDownload(using: request) { [weak self] download in
+                self?.resumed(transfer, download, engineID: engineID)
+            }
+        }
+        report(transfer, transfer.destination == nil ? .preparing : .downloading)
+    }
+
+    private func paused(_ transfer: Transfer, _ download: WKDownload, resumeData: Data?) {
+        forget(download, of: transfer)
+        guard transfer.isPausing, !transfer.hasEnded else { return }
+        transfer.resumeData = resumeData ?? transfer.resumeData
+        transfer.isPausing = false
+        transfer.isPaused = true
+        report(transfer, .downloading)
+    }
+
+    private func resumed(_ transfer: Transfer, _ download: WKDownload, engineID: String) {
+        guard transfers[engineID] === transfer, !transfer.hasEnded, transfer.download == nil else {
+            download.cancel { _ in }
+            return
+        }
+        register(download, for: transfer)
+    }
+
+    /// A web view that carries `transfer`'s download on in its page's store:
+    /// the page's own while it is open, else one kept only for the download.
+    private func carrier(for transfer: Transfer) -> WKWebView {
+        if let webView = transfer.page?.webView { return webView }
+        if let carrier = transfer.carrier { return carrier }
+        let configuration = WKWebViewConfiguration()
+        configuration.websiteDataStore = transfer.dataStore
+        let carrier = WKWebView(frame: .zero, configuration: configuration)
+        transfer.carrier = carrier
+        return carrier
+    }
+
+    /// Removes the partial file a paused or failed download kept to resume.
+    private func discardPartialFile(of transfer: Transfer) {
+        guard transfer.resumeData != nil || transfer.isPaused, let staging = transfer.staging else { return }
+        transfer.resumeData = nil
+        try? FileManager.default.removeItem(at: staging)
     }
 
     /// Replays a blocked download the person retried, as their own, under the
@@ -194,6 +301,13 @@ final class WebKitDownloads: NSObject {
         for download: WKDownload, response: URLResponse, suggestedFilename: String
     ) async -> URL? {
         guard let transfer = byDownload[ObjectIdentifier(download)] else { return nil }
+        if let staging = transfer.staging, transfer.destination != nil {
+            // A resumed or replayed download writes the file its place was
+            // already settled for; a replay writes it again from the start.
+            if transfer.restartsFromScratch { try? FileManager.default.removeItem(at: staging) }
+            transfer.restartsFromScratch = false
+            return staging
+        }
         guard await allowsAutomatically(transfer), transfer.download === download, !transfer.hasEnded else {
             block(transfer, download)
             return nil
@@ -282,9 +396,15 @@ final class WebKitDownloads: NSObject {
         }
     }
 
-    fileprivate func fail(_ download: WKDownload, error: any Error) {
+    fileprivate func fail(_ download: WKDownload, error: any Error, resumeData: Data?) {
         guard let transfer = byDownload[ObjectIdentifier(download)] else { return }
         forget(download, of: transfer)
+        // A pause stops the download too; its own handler finishes it.
+        if transfer.isPausing {
+            transfer.resumeData = resumeData ?? transfer.resumeData
+            return
+        }
+        transfer.resumeData = resumeData
         if transfer.isCanceling || (error as? URLError)?.code == .cancelled {
             end(transfer, .canceled)
         } else {
@@ -307,7 +427,14 @@ final class WebKitDownloads: NSObject {
     ) {
         guard !transfer.hasEnded else { return }
         transfer.hasEnded = true
-        if state != .finished, let staging = transfer.staging { try? FileManager.default.removeItem(at: staging) }
+        transfer.hasFailed = state == .failed
+        transfer.isPaused = false
+        if state != .failed { transfer.resumeData = nil }
+        // A failed download keeps its partial file while it can resume from it.
+        if state != .finished, transfer.resumeData == nil, let staging = transfer.staging {
+            try? FileManager.default.removeItem(at: staging)
+        }
+        if state != .failed || !transfer.canResume { transfer.carrier = nil }
         report(transfer, state, interruption: interruption, detail: detail)
     }
 
@@ -347,7 +474,8 @@ final class WebKitDownloads: NSObject {
             filename: transfer.filename, path: transfer.destination?.path, received: transfer.received,
             total: transfer.total, startedAt: transfer.startedAt, restored: false, paused: transfer.isPaused,
             state: state, warning: nil, interruption: interruption, failureDetail: detail,
-            approvalToken: state == .blocked ? transfer.engineID : "", canPause: false, canResume: false)
+            approvalToken: state == .blocked ? transfer.engineID : "", canPause: transfer.canPause,
+            canResume: transfer.canResume)
     }
 
     // MARK: - Actions - Facts
@@ -409,7 +537,7 @@ extension WebKitDownloads: WKDownloadDelegate {
     }
 
     func download(_ download: WKDownload, didFailWithError error: any Error, resumeData: Data?) {
-        fail(download, error: error)
+        fail(download, error: error, resumeData: resumeData)
     }
 
     func download(

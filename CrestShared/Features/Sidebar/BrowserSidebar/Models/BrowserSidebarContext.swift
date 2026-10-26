@@ -46,7 +46,6 @@ struct BrowserSidebarContext {
     /// itself rather than anything in it.
     let dismissUtilityOnBlankSpace: () -> Void
 
-    /// Opens or closes the archive, history, and downloads switcher, landing on
-    /// downloads when some have not been looked at yet.
+    /// Opens or closes the archive, history, and downloads switcher.
     let toggleUtilitySwitcher: () -> Void
 }

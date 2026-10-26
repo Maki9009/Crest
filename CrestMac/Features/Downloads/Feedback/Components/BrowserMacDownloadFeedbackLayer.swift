@@ -17,7 +17,8 @@ struct BrowserMacDownloadFeedbackLayer: View {
                 tabID: model.browser.shownTab?.id,
                 bounds: root,
                 destination: model.sidebarPresentation.showsSidebar
-                    ? model.chrome.utilityPresentation.triggerFrameInGlobal : nil,
+                    ? model.chrome.utilityPresentation.downloadsFrameInGlobal
+                        ?? model.chrome.utilityPresentation.triggerFrameInGlobal : nil,
                 isVisible: model.isWindowFocused && !model.chrome.isCommandPalettePresented,
                 reduceMotion: reduceMotion
             )

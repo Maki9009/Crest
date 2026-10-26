@@ -142,11 +142,11 @@ struct BrowserDownloadsPopoverRow: View {
                 if fileURL != nil, let reveal = destination(.revealInFinder) {
                     control(reveal.title, symbol: reveal.symbol) { perform(.open(download.id, reveal)) }
                 }
-                // Removing is there under the pointer, so ended rows stay calm.
+                // Removing shows under the pointer, so ended rows stay calm;
+                // assistive technologies reach it whether or not it shows.
                 control("Remove from List", symbol: "xmark") { perform(.clear(download.id)) }
                     .opacity(isHovering ? 1 : 0)
                     .allowsHitTesting(isHovering)
-                    .accessibilityHidden(!isHovering)
             }
         }
     }

@@ -4601,6 +4601,10 @@
     "utility-list-back-to-tabs": {
       "category": "improved",
       "message": "While Archive, History or Downloads fills the sidebar, the button in its corner takes you back to your tabs."
+    },
+    "downloads-popover-remove-accessible": {
+      "category": "internal",
+      "message": "The downloads popover's Remove from List control stays available to VoiceOver and other assistive technologies when the pointer is not over its row."
     }
   }
 }

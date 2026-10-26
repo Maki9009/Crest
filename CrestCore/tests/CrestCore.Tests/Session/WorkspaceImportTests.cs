@@ -129,7 +129,7 @@ public sealed partial class BrowserContractsTests {
         device.Send(new SeparateImportSpace(SpaceId(school)));
         device.Send(new BeginImportCommit());
 
-        device.Send(new ImportReviewedSpaces(device.Workspace, window));
+        var changes = device.Send(new ImportReviewedSpaces(device.Workspace, window));
 
         var current = device.Authority.Current;
         SpaceState Named(string name) => current.Spaces.Single(space => space.Settings.Name == name);
@@ -138,6 +138,8 @@ public sealed partial class BrowserContractsTests {
         Assert.Equal((leader.Id, leader.ProfileId), (member.Membership!.PrimaryId, member.ProfileId));
         Assert.Equal([("https://own-pin.example/", TabPlacement.Saved), ("https://client.example/", TabPlacement.Current)],
             member.Tabs.Select(tab => (tab.Url, tab.Placement)));
+        // The pin that became a saved tab still wears the image it came with.
+        Assert.Contains(changes.OfType<TabsImported>().Single().Tabs, imported => imported.TabId == member.Tabs[0].Id);
         Assert.Null(alone.Membership);
         Assert.NotEqual(leader.ProfileId, alone.ProfileId);
         Assert.Equal(TabPlacement.Pinned, alone.Tabs[0].Placement);

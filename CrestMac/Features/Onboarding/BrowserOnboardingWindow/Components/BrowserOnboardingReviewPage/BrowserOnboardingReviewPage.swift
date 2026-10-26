@@ -184,11 +184,12 @@ private struct BrowserOnboardingReviewSpaceStepper: View {
     }
 
     /// The reviewed Spaces in order, split where one group ends and the next
-    /// begins.
+    /// begins. Only the Spaces the review brings in as new Spaces come in as
+    /// a group; any other stands on its own.
     private var groups: [[BrowserImportSpaceReview]] {
         var groups: [[BrowserImportSpaceReview]] = []
         for item in spaces {
-            if let last = groups.last?.last, last.groupID == item.groupID {
+            if let last = groups.last?.last, last.comesInNew, item.comesInNew, last.groupID == item.groupID {
                 groups[groups.count - 1].append(item)
             } else {
                 groups.append([item])

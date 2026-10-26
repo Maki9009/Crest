@@ -9219,7 +9219,14 @@
 
     },
     "Open Link in" : {
-
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "فتح الرابط في"
+          }
+        }
+      }
     },
     "Open Link in Peek" : {
 
@@ -9312,7 +9319,14 @@
 
     },
     "Open This Page in" : {
-
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "فتح هذه الصفحة في"
+          }
+        }
+      }
     },
     "Open Translate…" : {
 
@@ -13281,7 +13295,14 @@
       }
     },
     "Sub-Space of %@" : {
-
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "مساحة فرعية من %@"
+          }
+        }
+      }
     },
     "Substitutions" : {
 

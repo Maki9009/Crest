@@ -23,7 +23,7 @@ struct MobileSpaceSettingsWorkspaceToolbar: View {
             VStack(spacing: 12) {
                 HStack {
                     identity
-                    Spacer(minLength: 0)
+                    Spacer(minLength: CrestSpacing.small)
                     spacePicker
                     spaceActions
                     addSpaceButton
@@ -55,20 +55,35 @@ struct MobileSpaceSettingsWorkspaceToolbar: View {
     }
 
     /// Every Space in picker order, each group in a section of its own.
+    /// Its own label keeps the selected Space's name on one line, shortened
+    /// when the toolbar is narrow, so the actions beside it stay in view.
     private var spacePicker: some View {
-        Picker("Space", selection: $selectedSpaceID) {
+        Menu {
+            // One inline picker per group, which the menu separates.
             ForEach(browser.spaceGroups, id: \.[0].id) { group in
-                Section {
+                Picker("Space", selection: $selectedSpaceID) {
                     ForEach(group) { space in
                         BrowserSpaceIdentityLabel(space: space).tag(Optional(space.id))
                     }
                 }
+                .pickerStyle(.inline)
+                .labelsHidden()
             }
+        } label: {
+            HStack(spacing: 4) {
+                if let space = selectedSpaceID.flatMap({ browser.spaceModel($0) }) {
+                    BrowserSpaceIdentityLabel(space: space)
+                }
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.caption2.weight(.semibold))
+                    .accessibilityHidden(true)
+            }
+            .lineLimit(1)
+            .truncationMode(.tail)
         }
-        .labelsHidden()
-        .pickerStyle(.menu)
-        .lineLimit(1)
-        .fixedSize()
+        .layoutPriority(1)
+        .accessibilityLabel("Space")
+        .accessibilityValue(selectedSpaceID.flatMap { browser.spaceModel($0)?.settings.name } ?? "")
         .accessibilityIdentifier("space-settings-picker")
     }
 

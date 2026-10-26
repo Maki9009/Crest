@@ -253,7 +253,7 @@ internal sealed class NativeWorkspaceImport {
     /// each later one joins it. A Sub-Space leaves a pinned tab its primary
     /// also holds to the primary alone, and keeps one the primary lacks as a
     /// saved tab, since its sidebar shows the group's pinned tabs.
-    private static void Regroup(IReadOnlyList<(Draft Input, SetupReviewSpace Review)> brought, DateTimeOffset now) {
+    private void Regroup(IReadOnlyList<(Draft Input, SetupReviewSpace Review)> brought, DateTimeOffset now) {
         Dictionary<Guid, Draft> leaders = [];
         foreach (var (input, review) in brought) {
             var group = review.Source.PrimaryId ?? review.Source.Id;
@@ -267,7 +267,7 @@ internal sealed class NativeWorkspaceImport {
                 Membership = SpaceMembership.Joining(leader.State, now),
                 Tabs = [.. input.State.Tabs
                     .Where(tab => !tab.IsPinned || (tab.SavedAddress ?? tab.Url) is not { } address || !shared.Contains(address))
-                    .Select(tab => tab.IsPinned ? tab with { Placement = TabPlacement.Pinned.OverflowsTo! } : tab)]
+                    .Select(tab => tab.IsPinned ? Copied(tab, tab with { Placement = TabPlacement.Pinned.OverflowsTo! }) : tab)]
             };
         }
     }

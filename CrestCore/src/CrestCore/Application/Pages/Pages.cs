@@ -348,6 +348,28 @@ internal sealed class Pages(Device device, Engines engines, IClock clock, IIdSou
         if (page.ShowsPictureInPicture && (shownAgain || Shown(page) is null)) issue(page.Engine, new ExitPictureInPicture(page.Id));
     }
 
+    /// The pages the core may unload to give memory back, off screen longest
+    /// first: off screen, live on an engine that can bring them back, showing
+    /// a document, owned by a tab that does not keep its page loaded and no
+    /// agent uses, and running no media. A page that has shown no document
+    /// yet stays: nothing of it could come back, and a popup waiting for its
+    /// first document would lose the page that opened it.
+    internal IReadOnlyList<Page> Unloadable() =>
+        open.Values
+            .Where(page => page.TabId is not null && page.Phase == PagePhase.Live && page.HiddenSince is not null
+                && page.Live.Url is not null && page.Engine.Supports(EngineCapability.PageResidency) && !page.RunsMedia
+                && Tab(page) is { KeepsPageLoaded: false } && !device.HoldsForAgent(page.TabId.Value))
+            .OrderBy(page => page.HiddenSince).ThenBy(page => page.Id)
+            .ToArray();
+
+    /// Unloads `page`, which closes keeping its state, which its tab keeps.
+    internal void Unload(Page page, PageTurn turn) {
+        Remove(page.Id);
+        turn.Changes.Publish(new PageRemoved(page.Id));
+        turn.Changes.Publish(new PageUnloaded(page.Id, page.WorkspaceId, page.TabId!.Value));
+        Close(page, keepsState: true, turn.Issue);
+    }
+
     /// The tabs of `workspaceId` whose pages run media, which stay open and
     /// loaded however long nobody looks at them.
     internal IReadOnlySet<Guid> TabsRunningMedia(Guid workspaceId) =>

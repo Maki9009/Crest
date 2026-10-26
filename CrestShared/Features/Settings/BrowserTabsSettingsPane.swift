@@ -12,6 +12,7 @@ struct BrowserTabsSettingsPane: View {
         BrowserSettingsPane(.tabs) {
             BrowserNewTabSettingsSection(preferences: browser.linkPreferences)
             BrowserDurableTabSettingsSection(preferences: appPreferences)
+            BrowserMemorySaverSettingsSection()
             #if os(macOS)
                 BrowserSplitFocusSettingsSection()
                 BrowserRecentTabsSettingsSection()
@@ -46,6 +47,29 @@ struct BrowserNewTabSettingsSection: View {
             Text("New tabs")
         } footer: {
             CrestFormFootnote("Hold Shift as you open a link to do the opposite.")
+        }
+    }
+}
+
+/// When Memory Saver unloads tabs nobody has looked at for a while.
+struct BrowserMemorySaverSettingsSection: View {
+    @AppStorage(BrowserMemorySaver.key, store: BrowserChromeAppearancePreference.defaults)
+    private var minutes = BrowserMemorySaver.standard.storedMinutes
+
+    var body: some View {
+        Section {
+            Picker("Unload inactive tabs", selection: $minutes) {
+                ForEach(BrowserMemorySaver.all, id: \.self) { saver in
+                    Text(saver.title).tag(saver.storedMinutes)
+                }
+            }
+            .accessibilityIdentifier("memory-saver")
+        } header: {
+            Text("Memory Saver")
+        } footer: {
+            CrestFormFootnote(
+                "Frees memory and battery from tabs you haven’t looked at for a while. They stay in the sidebar and reload when you go back. Tabs playing media, kept loaded or used by an agent stay loaded."
+            )
         }
     }
 }

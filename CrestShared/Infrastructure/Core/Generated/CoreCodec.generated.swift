@@ -7,7 +7,7 @@ import Foundation
 enum CoreCodec {
     /// SHA-256 of the canonical contract schema. The core refuses any other.
     static let fingerprint: [UInt8] = [
-        0x2e, 0xd4, 0xbb, 0xcf, 0xf3, 0x7d, 0xf6, 0x2f, 0x29, 0x89, 0x33, 0xd5, 0x21, 0x69, 0x58, 0xb8, 0x9d, 0x7f, 0x2a, 0x12, 0x80, 0x3b, 0x72, 0x87, 0x99, 0x66, 0x36, 0xdf, 0x66, 0xed, 0x13, 0x70
+        0x79, 0x45, 0xdc, 0xa0, 0x97, 0x26, 0x24, 0xcb, 0xf1, 0x45, 0x30, 0x51, 0x20, 0x94, 0x53, 0xda, 0x05, 0xc8, 0x08, 0xb9, 0x39, 0x9d, 0xe8, 0x45, 0x02, 0x92, 0xb9, 0x77, 0x49, 0x63, 0x52, 0xdf
     ]
     /// SHA-256 of the engine contract alone, which an engine binding registers with.
     static let engineFingerprint: [UInt8] = [
@@ -267,6 +267,7 @@ enum CoreCodec {
         case 247: return try ToggleImportSource(from: &reader)
         case 248: return try TogglePin(from: &reader)
         case 249: return try UnassignShortcut(from: &reader)
+        case 250: return try UnloadIdlePages(from: &reader)
         default: throw WireError.malformed("Unknown Intent tag \(tag)")
         }
     }
@@ -24271,6 +24272,22 @@ extension UnknownWorkspace {
 
     func encode(into writer: inout WireWriter) {
         writer.writeUUID(workspaceID)
+    }
+}
+
+extension UnloadIdlePages {
+    init(from reader: inout WireReader) throws(WireError) {
+        let idleMinutes = try reader.readInt()
+        self.init(idleMinutes: idleMinutes)
+    }
+
+    func encode(into writer: inout WireWriter) {
+        writer.writeInt(idleMinutes)
+    }
+
+    func encodeIntent(into writer: inout WireWriter) {
+        writer.writeTag(250)
+        encode(into: &writer)
     }
 }
 

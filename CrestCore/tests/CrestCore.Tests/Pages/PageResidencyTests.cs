@@ -86,6 +86,34 @@ public sealed partial class BrowserContractsTests {
     }
 
     [Fact]
+    public void MemorySaverUnloadsEveryPageHiddenLongerThanItsLimitAndNeverOneShownPlayingOrKeptLoaded() {
+        var (app, engine, binding, clock, workspace, window, space, keptTab) = ResidentHost();
+        using var disposal = app;
+        var kept = Guid.NewGuid();
+        app.Send(new OpenPage(kept, workspace, space, keptTab, window));
+        app.Report(engine, new PageCreated(kept));
+        app.Report(engine, new PageStateChanged(kept, Showing("https://kept.example/")));
+        var (_, first) = ShowNewTab(app, engine, clock, workspace, window, space, "https://first.example/");
+        var (_, second) = ShowNewTab(app, engine, clock, workspace, window, space, "https://second.example/");
+        var (_, playing) = ShowNewTab(app, engine, clock, workspace, window, space, "https://playing.example/");
+        var (_, recent) = ShowNewTab(app, engine, clock, workspace, window, space, "https://recent.example/");
+        var (_, shown) = ShowNewTab(app, engine, clock, workspace, window, space, "https://shown.example/");
+        app.Report(engine, new PageStateChanged(playing, Showing("https://playing.example/") with { Media = PageMediaActivity.Playing }));
+        app.Drain();
+
+        // Nothing has been hidden for half an hour yet.
+        Assert.Empty(Unloaded(app.Send(new UnloadIdlePages(IdleMinutes: 30))));
+
+        // Every page hidden longer than the limit goes at once, however many;
+        // the one hidden more recently, the one on screen, the one playing and
+        // the one its tab keeps loaded stay.
+        clock.Now += TimeSpan.FromMinutes(28);
+        Assert.Equal([first, second], Unloaded(app.Send(new UnloadIdlePages(IdleMinutes: 30))));
+        Assert.DoesNotContain(binding.Commands, command => command is ClosePage closing
+            && (closing.PageId == kept || closing.PageId == playing || closing.PageId == recent || closing.PageId == shown));
+    }
+
+    [Fact]
     public void AnUnloadedTabRestoresItsPageOnceAtTheSameAddressAndAClosedTabFreesWhatItKept() {
         var (app, engine, binding, clock, workspace, window, space, _) = ResidentHost();
         using var disposal = app;

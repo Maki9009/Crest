@@ -6905,6 +6905,10 @@ struct UnknownWorkspace: Equatable, Sendable {
     let workspaceID: UUID
 }
 
+struct UnloadIdlePages: Intent, PageIntent, Equatable, Sendable {
+    let idleMinutes: Int
+}
+
 struct UnregisteredEngine: Equatable, Sendable {
     let kind: EngineKind
 }

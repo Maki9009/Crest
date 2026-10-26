@@ -48,7 +48,7 @@ struct BrowserSettingsDestination: Hashable, Identifiable, Sendable {
     static let tabs = BrowserSettingsDestination(
         kind: .tabs, name: "tabs", title: "Tabs", subtitle: "New, pinned and saved tabs",
         searchTerms:
-            "focus switch new tabs follow move between Spaces Command-click middle-click Shift pinned saved close resume restore root URL favicon Split View focus follows mouse pointer sidebar widgets Now Playing media cards",
+            "focus switch new tabs follow move between Spaces Command-click middle-click Shift pinned saved close resume restore root URL favicon Split View focus follows mouse pointer sidebar widgets Now Playing media cards Memory Saver unload inactive sleep discard memory battery",
         symbol: "square.on.square", tincture: .riverAzure)
     static let search = BrowserSettingsDestination(
         kind: .search, name: "search", title: "Search", subtitle: "Search engine, command palette and site searches",

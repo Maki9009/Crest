@@ -1902,6 +1902,9 @@
     "After 1 Hour" : {
 
     },
+    "After 2 Hours" : {
+
+    },
     "After 6 Hours" : {
 
     },
@@ -1911,10 +1914,16 @@
     "After 12 Hours" : {
 
     },
+    "After 15 Minutes" : {
+
+    },
     "After 24 Hours" : {
 
     },
     "After 30 Days" : {
+
+    },
+    "After 30 Minutes" : {
 
     },
     "After a shortcut" : {
@@ -6419,6 +6428,9 @@
         }
       }
     },
+    "Frees memory and battery from tabs you haven’t looked at for a while. They stay in the sidebar and reload when you go back. Tabs playing media, kept loaded or used by an agent stay loaded." : {
+
+    },
     "French Shield" : {
       "extractionState" : "manual"
     },
@@ -8166,6 +8178,9 @@
       }
     },
     "Meeting notes" : {
+
+    },
+    "Memory Saver" : {
 
     },
     "Microphone" : {
@@ -14701,6 +14716,9 @@
       }
     },
     "Unload %lld Pages" : {
+
+    },
+    "Unload inactive tabs" : {
 
     },
     "Unload Tab" : {

@@ -4,7 +4,8 @@ import Foundation
 /// The app's one memory pressure source. Each squeeze first releases what
 /// every page owner keeps itself, then tells the core once, which unloads the
 /// tab pages off screen longest, as many as the device gives back at that
-/// level, from what each page last told it about its media.
+/// level, from what each page last told it about its media. It also runs
+/// Memory Saver, which unloads pages left unseen longer than the person chose.
 @MainActor
 final class BrowserMemoryPressureMonitor {
     // MARK: - Variables
@@ -14,6 +15,7 @@ final class BrowserMemoryPressureMonitor {
     private let owners: @MainActor () -> [any BrowserPageOwner]
     private var source: (any DispatchSourceMemoryPressure)?
     private var coalescer = BrowserMemoryPressureCoalescer()
+    private var memorySaver: Task<Void, Never>?
 
     // MARK: - Initializers
 
@@ -40,6 +42,22 @@ final class BrowserMemoryPressureMonitor {
         }
         self.source = source
         source.resume()
+        memorySaver = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: BrowserMemorySaver.checkInterval)
+                self?.unloadIdlePages()
+            }
+        }
+    }
+
+    /// Unloads the pages left unseen longer than Memory Saver allows, if it
+    /// is on.
+    func unloadIdlePages() {
+        guard let minutes = BrowserMemorySaver.current.idleMinutes else { return }
+        let changes = (try? core?.send(UnloadIdlePages(idleMinutes: minutes))) ?? []
+        let unloaded = Self.unloadedTabs(in: changes)
+        guard !unloaded.isEmpty else { return }
+        DiagnosticLog.pages.notice("Memory Saver unloads the pages of tabs \(unloaded.map(\.uuidString))")
     }
 
     /// Handles one kernel pressure event, captured inside the source's own
@@ -54,15 +72,20 @@ final class BrowserMemoryPressureMonitor {
         guard coalescer.shouldHandle(level, at: time) else { return }
         for owner in owners() { owner.relieveMemoryPressure(level) }
         let changes = (try? core?.send(ReportMemoryPressure(level: level))) ?? []
-        let unloaded = changes.compactMap { change -> UUID? in
-            guard case .pageUnloaded(let unloaded) = change else { return nil }
-            return unloaded.tabID
-        }
+        let unloaded = Self.unloadedTabs(in: changes)
         DiagnosticLog.pages.notice(
             "Memory pressure \(level.name) unloads the pages of tabs \(unloaded.map(\.uuidString))")
     }
 
+    private static func unloadedTabs(in changes: [Change]) -> [UUID] {
+        changes.compactMap { change -> UUID? in
+            guard case .pageUnloaded(let unloaded) = change else { return nil }
+            return unloaded.tabID
+        }
+    }
+
     deinit {
         source?.cancel()
+        memorySaver?.cancel()
     }
 }

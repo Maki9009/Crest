@@ -205,7 +205,9 @@ final class SpacePickerPresentationView: NSView {
         transition.animate(
             highlight, keyPath: "position", values: frames.map { NSValue(point: CGPoint(x: $0.midX, y: $0.midY)) })
         transition.animate(highlight, keyPath: "bounds.size", values: frames.map { NSValue(size: $0.size) })
-        transition.animate(highlight, keyPath: "path", values: frames.map { selectionPath(in: $0.size) })
+        let insets = transition.positions.map { selectionInset(at: $0) }
+        transition.animate(
+            highlight, keyPath: "path", values: zip(frames, insets).map { selectionPath(in: $0.size, inset: $1) })
         transition.animate(
             highlight, keyPath: "fillColor",
             values: colors.map {
@@ -272,7 +274,7 @@ final class SpacePickerPresentationView: NSView {
         highlight.isHidden = false
         highlight.frame = frame
         let stroke = CrestLayout.hairline
-        highlight.path = selectionPath(in: frame.size)
+        highlight.path = selectionPath(in: frame.size, inset: selectionInset(at: position))
         highlight.fillColor =
             color.withAlphaComponent(
                 color.alphaComponent * CrestSpaceIconPickerMetrics.selectionFillOpacity
@@ -298,10 +300,13 @@ final class SpacePickerPresentationView: NSView {
         groupOutline.lineWidth = CrestSpaceIconPickerMetrics.groupOutlineStroke
     }
 
-    private func selectionPath(in size: CGSize) -> CGPath {
+    /// The selection's path in a frame `size` set `inset` inside a group's
+    /// outline: the outline's shape drawn that far in, so the two keep
+    /// concentric corners.
+    private func selectionPath(in size: CGSize, inset: CGFloat) -> CGPath {
         CrestSpaceIconPickerShape(style: style)
-            .inset(by: CrestLayout.hairline / 2)
-            .path(in: CGRect(origin: .zero, size: size))
+            .inset(by: inset + CrestLayout.hairline / 2)
+            .path(in: CGRect(origin: .zero, size: size).insetBy(dx: -inset, dy: -inset))
             .cgPath
     }
 
@@ -322,8 +327,13 @@ final class SpacePickerPresentationView: NSView {
     /// group's outline.
     private func selectionFrame(at position: CGFloat) -> CGRect? {
         guard let frame = interpolatedFrame(at: position) else { return nil }
-        let inset = outlineFrame(at: position)?.selectionInset ?? 0
+        let inset = selectionInset(at: position)
         return frame.insetBy(dx: inset, dy: inset)
+    }
+
+    /// How far the selection sits inside a group's outline at `position`.
+    private func selectionInset(at position: CGFloat) -> CGFloat {
+        outlineFrame(at: position)?.selectionInset ?? 0
     }
 
     private func interpolation(at position: CGFloat) -> (UUID, UUID, CGFloat)? {

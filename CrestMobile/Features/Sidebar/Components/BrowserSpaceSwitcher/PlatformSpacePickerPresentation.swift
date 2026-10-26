@@ -148,7 +148,10 @@ final class SpacePickerPresentationView: UIView {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         highlight.frame = frame
-        highlight.cornerRadius = CrestSpaceIconPickerShape(style: style).cornerRadius(in: frame)
+        // Inside a group's outline the selection keeps the outline's corners,
+        // drawn `inset` in, so the two stay concentric.
+        highlight.cornerRadius = max(
+            0, CrestSpaceIconPickerShape(style: style).cornerRadius(in: frame.insetBy(dx: -inset, dy: -inset)) - inset)
         highlight.cornerCurve = CrestSpaceIconPickerShape.layerCornerCurve
         highlight.backgroundColor = color.withAlphaComponent(0.22).cgColor
         // The outline grows into a group, holds within one and shrinks back
